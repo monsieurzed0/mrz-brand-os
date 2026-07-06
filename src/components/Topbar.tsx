@@ -1,83 +1,25 @@
-import { useState } from 'react';
-import { Bell, Activity, Globe } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import SystemClock from './SystemClock';
-import GlobalSearch from './GlobalSearch';
-import NotificationDrawer from './NotificationDrawer';
-import { useStore } from '@/lib/useStore';
+import { NotificationBell } from './NotificationBell';
+import { GlobalSearch } from './GlobalSearch';
+import { SystemClock } from './SystemClock';
 
-interface Props {
-  title: string;
-}
-
-export default function Topbar({ title }: Props) {
-  const [notifOpen, setNotifOpen] = useState(false);
-  const { state } = useStore();
-  const navigate = useNavigate();
-  const unreadCount = state.notifications.filter(n => n.status === 'unread').length;
-  
-  // Calculate system health
-  const runningAgents = state.agents.filter(a => a.status === 'active').length;
-  const totalAgents = state.agents.length;
-  const systemHealthy = runningAgents >= 3;
-
+export function TopBar({ title }: { title: string }) {
   return (
-    <>
-      <header className="sticky top-0 z-30 bg-dark/90 backdrop-blur-xl border-b border-exec/10">
-        <div className="flex items-center justify-between px-6 py-3">
-          {/* Left: Title */}
-          <div className="flex items-center gap-3">
-            <h1 className="text-lg font-bold text-ivory tracking-wide">{title}</h1>
-          </div>
-
-          {/* Center: Search */}
-          <div className="flex-1 max-w-lg mx-8">
-            <GlobalSearch />
-          </div>
-
-          {/* Right: System rail */}
-          <div className="flex items-center gap-3">
-            {/* System status indicator */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-carbon/60 border border-exec/10">
-              <div className={`w-2 h-2 rounded-full ${systemHealthy ? 'bg-copper animate-pulse-copper' : 'bg-subtle'}`} />
-              <Activity size={13} className={systemHealthy ? 'text-copper' : 'text-subtle'} />
-              <span className="text-xs font-semibold text-muted">
-                {runningAgents}/{totalAgents} agents
-              </span>
-            </div>
-
-            <div className="w-px h-6 bg-exec/15" />
-
-            {/* Clock */}
-            <SystemClock />
-
-            <div className="w-px h-6 bg-exec/15" />
-            
-            {/* Media Center quick access */}
-            <button
-              onClick={() => navigate('/media-center')}
-              className="p-2 rounded-lg hover:bg-carbon/60 transition text-subtle hover:text-copper"
-              title="Media Center"
-            >
-              <Globe size={17} />
-            </button>
-
-            {/* Notifications */}
-            <button
-              onClick={() => setNotifOpen(true)}
-              className="relative p-2 rounded-lg hover:bg-carbon/60 transition group"
-            >
-              <Bell size={17} className={unreadCount > 0 ? 'text-copper-light' : 'text-subtle group-hover:text-muted'} />
-              {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-copper text-dark text-[10px] font-bold rounded-full flex items-center justify-center px-1 animate-glow">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
-            </button>
-          </div>
+    <header className="sticky top-0 z-40 border-b border-white/10 bg-[#141416]/95 backdrop-blur">
+      <div className="flex items-center gap-4 px-6 py-4">
+        <div className="min-w-0 flex-1">
+          <div className="text-xs uppercase tracking-[0.16em] text-[#71717A]">MR Z Brand OS</div>
+          <h1 className="mt-1 truncate text-xl font-semibold text-[#F0EDE8]">{title}</h1>
         </div>
-      </header>
-      <NotificationDrawer open={notifOpen} onClose={() => setNotifOpen(false)} />
-    </>
+
+        <div className="hidden min-w-[340px] flex-1 xl:block">
+          <GlobalSearch />
+        </div>
+
+        <div className="flex items-center gap-3">
+          <SystemClock />
+          <NotificationBell />
+        </div>
+      </div>
+    </header>
   );
 }
