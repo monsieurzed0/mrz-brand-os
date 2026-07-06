@@ -1,5 +1,5 @@
-import { api } from 'src/lib/api';
-import { useApiQuery } from 'src/hooks/useApiQuery';
+import { api } from "../lib/api";
+import { useApiQuery } from "../hooks/useApiQuery";
 
 export function DashboardPage() {
   const { data, loading, error } = useApiQuery(api.getDashboardSummary, []);
