@@ -6,14 +6,12 @@ import StatusBadge from '@/components/StatusBadge';
 import { useStore } from '@/lib/useStore';
 import { PRODUCTS, PLATFORMS } from '@/lib/constants';
 import type { Script, Product, Platform } from '@/types';
-import { api } from '@/lib/api';
-import { useApiQuery } from '@/hooks/useApiQuery';
+
 
 export default function ScriptRoom() {
   const { state, addScript, updateScript, deleteScript, showToast } = useStore();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const { data, loading, error } = useApiQuery(api.getScripts, []);
 
   const [form, setForm] = useState<Partial<Script>>({
     subject: '', hook: '', script: '', ctaGenerated: '', caption: '', angle: '', target: '', product: 'Mr Z Brand', platform: 'TikTok', status: 'draft', versions: [],
