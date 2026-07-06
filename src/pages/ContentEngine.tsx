@@ -77,12 +77,116 @@ export default function ContentEngine() {
 
   const selectedIdea = readyIdeas.find((i) => i.id === selectedIdeaId);
 
-  const generate = () => {
-    if (!selectedIdea) {
-      showToast('Sélectionnez une idée');
-      return;
-    }
+  const generate = async () => {
+  if (!selectedIdea) {
+    showToast('Sélectionnez une idée');
+    return;
+  }
 
+  const s = selectedIdea;
+
+  const localOutputs: GeneratedFormat[] = [
+    {
+      category: 'video',
+      format: 'TikTok',
+      description: 'Vidéo courte format vertical',
+      content: `Hook (3s) : "${s.subject.split(' ').slice(0, 6).join(' ')}..."\nDéveloppement (${Math.max(s.duration - 10, 20)}s) : Angle ${s.angle} pour ${s.target}\nCTA (5s) : ${s.cta}`,
+    },
+    {
+      category: 'video',
+      format: 'YouTube Shorts',
+      description: 'Short vertical optimisé SEO',
+      content: `Titre accrocheur : ${s.subject}\nIntro rapide + hook visuel\nCorps : ${s.angle} — valeur pour ${s.target}\nOutro : ${s.cta}\nDescription optimisée SEO`,
+    },
+    {
+      category: 'video',
+      format: 'Instagram Reel',
+      description: 'Reel avec cover premium',
+      content: `Cover : titre typographié premium\nHook visuel 2s\nContenu : ${s.angle} — ${s.subject}\nTransition : signature Mr Z Brand\nCTA : ${s.cta}`,
+    },
+    {
+      category: 'video',
+      format: 'Vidéo LinkedIn',
+      description: 'Format natif professionnel',
+      content: `Format natif carré 1:1\nSous-titres intégrés\nTon professionnel — angle "${s.angle}"\nSujet : ${s.subject}\nCTA : ${s.cta}`,
+    },
+    {
+      category: 'text',
+      format: 'Post LinkedIn',
+      description: 'Article court professionnel',
+      content: `${s.subject}.\n\nLa plupart des gens pensent que c'est simple.\nMais voici ce que ${s.target} ignorent souvent :\n\n→ [Point 1 basé sur "${s.angle}"]\n→ [Point 2]\n→ [Point 3]\n\n${s.cta}\n\n#MrZBrand #${s.product.replace(/\s/g, '')} #Branding`,
+    },
+    {
+      category: 'text',
+      format: 'Post Facebook',
+      description: 'Publication engageante',
+      content: `${s.subject}\n\nSi tu es ${s.target.toLowerCase()}, ce message est pour toi.\n\n${s.angle} : [développement]\n\n${s.cta}`,
+    },
+    {
+      category: 'text',
+      format: 'Caption Instagram',
+      description: 'Légende storytelling',
+      content: `${s.subject}\n\n${s.angle} pour ${s.target}.\n\n${s.cta}\n\n#MrZBrand #Premium #Branding #Design`,
+    },
+    {
+      category: 'text',
+      format: 'Caption TikTok',
+      description: 'Texte court + hashtags',
+      content: `${s.subject} ${s.cta} #MrZBrand #${s.platform.replace(/\s/g, '')}`,
+    },
+    {
+      category: 'text',
+      format: 'Description Shorts',
+      description: 'Description YouTube',
+      content: `${s.subject} — ${s.angle} pour ${s.target}\n\n${s.cta}\n\n#Shorts #MrZBrand`,
+    },
+    {
+      category: 'text',
+      format: 'Hook textuel',
+      description: 'Accroche copywriting',
+      content: `"${s.subject.split(' ').slice(0, 8).join(' ')}... et si tout ce que tu savais était faux ?"`,
+    },
+    {
+      category: 'visual',
+      format: 'Prompt visuel premium',
+      description: 'Prompt image premium',
+      content: `Cinematic brand visual, ${s.subject}, premium dark aesthetic, copper and charcoal tones, editorial composition, ${s.product} branding, professional lighting, depth of field, no text overlay`,
+    },
+    {
+      category: 'visual',
+      format: 'Hook visuel',
+      description: "Typographie d'accroche",
+      content: `Bold typography on dark background: "${s.subject.split(' ').slice(0, 5).join(' ')}" in Raleway Bold, copper accent color #D67A2C, minimal composition`,
+    },
+    {
+      category: 'visual',
+      format: 'Concept carrousel',
+      description: 'Structure slides Instagram',
+      content: `Slide 1: Hook — "${s.subject}"\nSlide 2: Le problème\nSlide 3: La réalité\nSlide 4: La solution (${s.angle})\nSlide 5: CTA — ${s.cta}\nStyle: Fond sombre, typo Raleway, accents cuivrés`,
+    },
+    {
+      category: 'visual',
+      format: 'Concept post statique',
+      description: 'Design single post',
+      content: `Visual card premium\nTitre : ${s.subject}\nSous-titre : ${s.angle}\nLogo ${s.product}\nPalette : noir charbon + cuivre\nFormat : 1080x1350`,
+    },
+    {
+      category: 'visual',
+      format: 'Note Photoshop',
+      description: 'Guide de composition',
+      content: `Calques :\n1. Fond #0D0D10\n2. Texture hero-bg.jpg à 5% opacité\n3. Titre en Raleway Bold #F0EDE8\n4. Accent line #D67A2C\n5. Logo ${s.product}\n6. CTA zone en bas\nExport : 1080x1350 PNG + 1920x1080 pour LinkedIn`,
+    },
+  ];
+
+  try {
+    const saved = await persistOutputs(selectedIdea, localOutputs);
+    setGenerated(saved);
+    setActiveCategory('video');
+    showToast(`${saved.length} formats générés et enregistrés`);
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : 'Erreur lors de la génération');
+  }
+};
     const existingOutputs = (Array.isArray(outputsData) ? outputsData : [])
       .filter((item: any) => item.content_idea_id === selectedIdea.id)
       .map((item: any) => ({
