@@ -15,7 +15,7 @@ export function DashboardPage() {
   return (
     <div className="space-y-8">
       <section className="rounded-3xl border border-white/10 bg-[#141416] p-6">
-        <div className="text-xs uppercase tracking-[0.16em] text-[#A1A1AA]">Priorité centrale</div>
+        <div className="text-xs uppercase tracking-[0.16em] text-[#A1A1AA]">Priorité centre</div>
         <div className="mt-3 text-2xl font-semibold text-[#F0EDE8]">
           {weekly?.focus_primary || 'Aucune priorité définie'}
         </div>
