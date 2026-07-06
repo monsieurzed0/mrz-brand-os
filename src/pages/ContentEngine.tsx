@@ -491,15 +491,33 @@ export default function ContentEngine() {
                       </button>
 
                       {item.category === 'video' && (
-                        <button
-                          onClick={() => {
-                            showToast('Envoyé vers Script Room');
-                            navigate('/scripts');
+                      <button
+                          onClick={async () => {
+                            if (!selectedIdea) return;
+                            try {
+                              await api.createScript({
+                                content_idea_id: selectedIdea.id,
+                                sujet: selectedIdea.subject,
+                                hook: item.content.split('\n')[0] || '',
+                                script: item.content,
+                                cta_genere: selectedIdea.cta,
+                                caption: selectedIdea.caption,
+                                angle: selectedIdea.angle,
+                                cible: selectedIdea.target,
+                                produit: selectedIdea.product,
+                                plateforme: item.format,
+                                status: 'draft',
+                              });
+                              showToast('Envoyé vers Script Room');
+                              navigate('/scripts');
+                            } catch (err) {
+                              showToast(err instanceof Error ? err.message : 'Erreur envoi Script Room');
+                            }
                           }}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-exec/15 text-[10px] text-muted font-semibold hover:border-copper/20 hover:text-copper-light transition"
                         >
                           <FileText size={10} /> Script Room
-                        </button>
+                      </button>
                       )}
 
                       {item.category === 'visual' && (
