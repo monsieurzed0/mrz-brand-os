@@ -32,7 +32,38 @@ export type ContentIdea = {
   created_at?: string;
   updated_at?: string;
 };
+export type ContentIdea = {
+  id: string;
+  sujet: string;
+  angle?: string;
+  cible?: string;
+  produit?: string;
+  plateforme?: string;
+  duree?: number;
+  cta?: string;
+  caption?: string;
+  source?: string;
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
+};
 
+export type ScriptItem = {
+  id: string;
+  content_idea_id?: string;
+  sujet: string;
+  hook?: string;
+  script?: string;
+  cta_genere?: string;
+  caption?: string;
+  angle?: string;
+  cible?: string;
+  produit?: string;
+  plateforme?: string;
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
+};
 export const api = {
   getDashboardSummary: () => apiFetch('/api/dashboard/summary'),
   getBrandMemory: () => apiFetch('/api/brand-memory'),
@@ -40,4 +71,24 @@ export const api = {
   getNotifications: () => apiFetch('/api/notifications'),
   search: (q: string) => apiFetch(`/api/search?q=${encodeURIComponent(q)}`),
   getContentIdeas: () => apiFetch<ContentIdea[]>('/api/content-ideas'),
+  getContentIdeas: () => apiFetch<ContentIdea[]>('/api/content-ideas'),
+
+getScripts: () => apiFetch<ScriptItem[]>('/api/scripts'),
+
+createScript: (payload: Partial<ScriptItem>) =>
+  apiFetch('/api/scripts', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }),
+
+updateScript: (id: string, payload: Partial<ScriptItem>) =>
+  apiFetch(`/api/scripts/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  }),
+
+deleteScript: (id: string) =>
+  apiFetch(`/api/scripts/${id}`, {
+    method: 'DELETE',
+  }),
 };
