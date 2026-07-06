@@ -193,6 +193,35 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+    createContentEngineOutput: (payload: Partial<ContentEngineOutput>) =>
+    apiFetch('/api/content-engine-outputs', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateContentEngineOutput: (id: string, payload: Partial<ContentEngineOutput>) =>
+    apiFetch(`/api/content-engine-outputs/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  deleteContentEngineOutput: (id: string) =>
+    apiFetch(`/api/content-engine-outputs/${id}`, {
+      method: 'DELETE',
+    }),
+
+  createVisualPrompt: (payload: Partial<VisualPromptItem>) =>
+    apiFetch('/api/visual-prompts', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateVisualPrompt: (id: string, payload: Partial<VisualPromptItem>) =>
+    apiFetch(`/api/visual-prompts/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  deleteVisualPrompt: (id: string) =>
+    apiFetch(`/api/visual-prompts/${id}`, {
+      method: 'DELETE',
+    }),
   // Dashboard
   getDashboardSummary: () => apiFetch<DashboardSummary>('/api/dashboard/summary'),
 
@@ -314,35 +343,6 @@ export const api = {
   // Visual prompts
   getVisualPrompts: () => apiFetch<VisualPromptItem[]>('/api/visual-prompts'),
 
-    createContentEngineOutput: (payload: Partial<ContentEngineOutput>) =>
-    apiFetch('/api/content-engine-outputs', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-  updateContentEngineOutput: (id: string, payload: Partial<ContentEngineOutput>) =>
-    apiFetch(`/api/content-engine-outputs/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    }),
-  deleteContentEngineOutput: (id: string) =>
-    apiFetch(`/api/content-engine-outputs/${id}`, {
-      method: 'DELETE',
-    }),
-
-  createVisualPrompt: (payload: Partial<VisualPromptItem>) =>
-    apiFetch('/api/visual-prompts', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-  updateVisualPrompt: (id: string, payload: Partial<VisualPromptItem>) =>
-    apiFetch(`/api/visual-prompts/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    }),
-  deleteVisualPrompt: (id: string) =>
-    apiFetch(`/api/visual-prompts/${id}`, {
-      method: 'DELETE',
-    }),
 };
   createContentEngineOutput: (payload: Partial<ContentEngineOutput>) =>
     apiFetch('/api/content-engine-outputs', {
