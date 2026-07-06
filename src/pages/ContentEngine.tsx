@@ -522,9 +522,28 @@ export default function ContentEngine() {
 
                       {item.category === 'visual' && (
                         <button
-                          onClick={() => {
-                            showToast('Envoyé vers Visual Lab');
-                            navigate('/visual-lab');
+                          onClick={async () => {
+                            if (!selectedIdea) return;
+                            try {
+                              await api.createVisualPrompt({
+                                related_script_id: null,
+                                sujet: selectedIdea.subject,
+                                angle: selectedIdea.angle,
+                                produit: selectedIdea.product,
+                                hook_visuel: item.format === 'Hook visuel' ? item.content : selectedIdea.subject,
+                                prompt_principal: item.content,
+                                variante_a: '',
+                                variante_b: '',
+                                variante_c: '',
+                                negative_prompt: 'Pas de bleu, pas de néon, pas de stock cheap, pas de texte intégré.',
+                                photoshop_note: item.format === 'Note Photoshop' ? item.content : 'Prévoir un espace de titre dans la composition.',
+                                status: 'draft',
+                              });
+                              showToast('Envoyé vers Visual Lab');
+                              navigate('/visual-lab');
+                            } catch (err) {
+                              showToast(err instanceof Error ? err.message : 'Erreur envoi Visual Lab');
+                            }
                           }}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-exec/15 text-[10px] text-muted font-semibold hover:border-copper/20 hover:text-copper-light transition"
                         >
