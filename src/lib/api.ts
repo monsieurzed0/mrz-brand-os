@@ -313,8 +313,8 @@ export const api = {
 
   // Visual prompts
   getVisualPrompts: () => apiFetch<VisualPromptItem[]>('/api/visual-prompts'),
-};
-  createContentEngineOutput: (payload: Partial<ContentEngineOutput>) =>
+
+    createContentEngineOutput: (payload: Partial<ContentEngineOutput>) =>
     apiFetch('/api/content-engine-outputs', {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -342,4 +342,10 @@ export const api = {
   deleteVisualPrompt: (id: string) =>
     apiFetch(`/api/visual-prompts/${id}`, {
       method: 'DELETE',
+    }),
+};
+  createContentEngineOutput: (payload: Partial<ContentEngineOutput>) =>
+    apiFetch('/api/content-engine-outputs', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     }),
