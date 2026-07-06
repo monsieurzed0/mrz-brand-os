@@ -445,3 +445,27 @@ export default function ContentEngine() {
     </div>
   );
 }
+async function persistOutputs(selectedIdea: any, outputs: GeneratedFormat[]) {
+  const saved = [];
+
+  for (const item of outputs) {
+    const result: any = await api.createContentEngineOutput({
+      content_idea_id: selectedIdea.id,
+      output_type: item.category,
+      output_label: item.format,
+      platforme: selectedIdea.platform,
+      contenu: item.content,
+      status: 'draft',
+    });
+
+    saved.push({
+      id: result.id,
+      category: item.category,
+      format: item.format,
+      description: item.description,
+      content: item.content,
+    });
+  }
+
+  return saved;
+}
