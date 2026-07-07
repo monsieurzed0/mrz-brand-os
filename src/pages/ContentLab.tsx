@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Lightbulb, Plus, Sparkles, Grid3X3, List, Filter } from 'lucide-react';
+
 import Topbar from '@/components/Topbar';
 import SectionCard from '@/components/SectionCard';
 import StatusBadge from '@/components/StatusBadge';
+
 import { useStore } from '@/lib/useStore';
 import { api } from '@/lib/api';
 import { useApiQuery } from '@/hooks/useApiQuery';
@@ -77,6 +79,7 @@ export default function ContentLab() {
   const [filterStatus, setFilterStatus] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+
   const [form, setForm] = useState<Partial<UiContentIdea>>({
     subject: '',
     angle: '',
@@ -120,19 +123,22 @@ export default function ContentLab() {
       showToast('Sujet manquant');
       return;
     }
+
     try {
       const payload = mapUiIdeaToApi(form);
+
       if (editId) {
         await api.updateContentIdea(editId, payload);
+
         setIdeasData((prev: any) =>
-          (prev || []).map((item: any) =>
-            item.id === editId ? { ...item, ...payload } : item
-          )
+          (prev || []).map((item: any) => (item.id === editId ? { ...item, ...payload } : item))
         );
+
         showToast('Idée mise à jour');
         setEditId(null);
       } else {
         const result: any = await api.createContentIdea(payload);
+
         setIdeasData((prev: any) => [
           ...(prev || []),
           {
@@ -142,8 +148,10 @@ export default function ContentLab() {
             updated_at: new Date().toISOString(),
           },
         ]);
+
         showToast('Idée ajoutée');
       }
+
       resetForm();
       setShowForm(false);
     } catch (err) {
@@ -154,9 +162,11 @@ export default function ContentLab() {
   const generateIdeas = async () => {
     try {
       const result: any = await api.runContentStrategist({ count: 5 });
+
       if (result?.ideas && Array.isArray(result.ideas)) {
         setIdeasData((prev: any) => [...(prev || []), ...result.ideas]);
       }
+
       showToast(`${result?.count || 0} idées générées`);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Erreur génération idées');
@@ -182,8 +192,8 @@ export default function ContentLab() {
   return (
     <div>
       <Topbar title="Content Lab" />
+
       <div className="p-6 space-y-5 animate-fade-in">
-        {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2">
             <Lightbulb size={20} className="text-copper" />
@@ -192,6 +202,7 @@ export default function ContentLab() {
               {allIdeas.length} idées
             </span>
           </div>
+
           <div className="flex items-center gap-2">
             <button
               onClick={generateIdeas}
@@ -199,6 +210,7 @@ export default function ContentLab() {
             >
               <Sparkles size={14} /> Générer 5 idées IA
             </button>
+
             <button
               onClick={() => {
                 setEditId(null);
@@ -209,6 +221,7 @@ export default function ContentLab() {
             >
               <Plus size={14} /> Nouvelle idée
             </button>
+
             <div className="flex border border-exec/15 rounded-lg overflow-hidden">
               <button
                 onClick={() => setView('table')}
@@ -229,9 +242,9 @@ export default function ContentLab() {
         {loading ? <div className="text-sm text-subtle">Chargement des idées...</div> : null}
         {error ? <div className="text-sm text-red-400">Erreur : {error}</div> : null}
 
-        {/* Filters */}
         <div className="flex items-center gap-3 flex-wrap">
           <Filter size={14} className="text-subtle" />
+
           <select
             value={filterProduct}
             onChange={(e) => setFilterProduct(e.target.value)}
@@ -244,6 +257,7 @@ export default function ContentLab() {
               </option>
             ))}
           </select>
+
           <select
             value={filterPlatform}
             onChange={(e) => setFilterPlatform(e.target.value)}
@@ -256,6 +270,7 @@ export default function ContentLab() {
               </option>
             ))}
           </select>
+
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
@@ -270,7 +285,6 @@ export default function ContentLab() {
           </select>
         </div>
 
-        {/* Form */}
         {showForm && (
           <SectionCard title={editId ? "Modifier l'idée" : 'Nouvelle idée'}>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -282,6 +296,7 @@ export default function ContentLab() {
                   className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30"
                 />
               </div>
+
               <div>
                 <label className="text-xs text-subtle font-semibold">Angle</label>
                 <input
@@ -290,6 +305,7 @@ export default function ContentLab() {
                   className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30"
                 />
               </div>
+
               <div>
                 <label className="text-xs text-subtle font-semibold">Cible</label>
                 <input
@@ -298,6 +314,7 @@ export default function ContentLab() {
                   className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30"
                 />
               </div>
+
               <div>
                 <label className="text-xs text-subtle font-semibold">Produit</label>
                 <select
@@ -312,6 +329,7 @@ export default function ContentLab() {
                   ))}
                 </select>
               </div>
+
               <div>
                 <label className="text-xs text-subtle font-semibold">Plateforme</label>
                 <select
@@ -326,6 +344,7 @@ export default function ContentLab() {
                   ))}
                 </select>
               </div>
+
               <div>
                 <label className="text-xs text-subtle font-semibold">Durée (s)</label>
                 <select
@@ -340,6 +359,7 @@ export default function ContentLab() {
                   ))}
                 </select>
               </div>
+
               <div>
                 <label className="text-xs text-subtle font-semibold">CTA</label>
                 <input
@@ -348,6 +368,7 @@ export default function ContentLab() {
                   className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30"
                 />
               </div>
+
               <div>
                 <label className="text-xs text-subtle font-semibold">Source</label>
                 <input
@@ -356,6 +377,7 @@ export default function ContentLab() {
                   className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30"
                 />
               </div>
+
               <div>
                 <label className="text-xs text-subtle font-semibold">Statut</label>
                 <select
@@ -371,6 +393,7 @@ export default function ContentLab() {
                 </select>
               </div>
             </div>
+
             <div className="flex gap-2 mt-4">
               <button
                 onClick={handleSave}
@@ -388,7 +411,6 @@ export default function ContentLab() {
           </SectionCard>
         )}
 
-        {/* Table View */}
         {view === 'table' && (
           <div className="rounded-xl border border-exec/10 overflow-hidden">
             <div className="overflow-x-auto">
@@ -404,6 +426,7 @@ export default function ContentLab() {
                     <th className="text-left px-4 py-3 text-xs font-semibold text-subtle uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
+
                 <tbody className="divide-y divide-exec/5">
                   {ideas.map((idea) => (
                     <tr key={idea.id} className="hover:bg-carbon/40 transition">
@@ -437,7 +460,6 @@ export default function ContentLab() {
           </div>
         )}
 
-        {/* Kanban View */}
         {view === 'kanban' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {IDEA_STATUSES.map((status) => (
@@ -450,6 +472,7 @@ export default function ContentLab() {
                     {ideas.filter((i) => i.status === status).length}
                   </span>
                 </div>
+
                 <div className="p-3 space-y-2 min-h-[100px]">
                   {ideas
                     .filter((i) => i.status === status)
@@ -461,12 +484,8 @@ export default function ContentLab() {
                       >
                         <p className="text-sm font-semibold text-ivory line-clamp-2">{idea.subject}</p>
                         <div className="flex items-center gap-2 mt-2">
-                          <span className="text-[10px] text-subtle bg-dark px-1.5 py-0.5 rounded">
-                            {idea.product}
-                          </span>
-                          <span className="text-[10px] text-subtle bg-dark px-1.5 py-0.5 rounded">
-                            {idea.platform}
-                          </span>
+                          <span className="text-[10px] text-subtle bg-dark px-1.5 py-0.5 rounded">{idea.product}</span>
+                          <span className="text-[10px] text-subtle bg-dark px-1.5 py-0.5 rounded">{idea.platform}</span>
                         </div>
                       </div>
                     ))}
@@ -476,7 +495,6 @@ export default function ContentLab() {
           </div>
         )}
 
-        {/* Distribution */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <SectionCard title="Distribution par produit">
             <div className="space-y-2">
@@ -487,10 +505,7 @@ export default function ContentLab() {
                   <div key={p} className="flex items-center gap-3">
                     <span className="text-xs text-muted w-32 truncate">{p}</span>
                     <div className="flex-1 h-4 bg-deep rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-copper/40 rounded-full transition-all"
-                        style={{ width: `${pct}%` }}
-                      />
+                      <div className="h-full bg-copper/40 rounded-full transition-all" style={{ width: `${pct}%` }} />
                     </div>
                     <span className="text-xs text-ivory font-bold w-6 text-right">{count}</span>
                   </div>
@@ -498,6 +513,7 @@ export default function ContentLab() {
               })}
             </div>
           </SectionCard>
+
           <SectionCard title="Distribution par plateforme">
             <div className="space-y-2">
               {PLATFORMS.map((p) => {
@@ -507,10 +523,7 @@ export default function ContentLab() {
                   <div key={p} className="flex items-center gap-3">
                     <span className="text-xs text-muted w-32 truncate">{p}</span>
                     <div className="flex-1 h-4 bg-deep rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-copper-light/40 rounded-full transition-all"
-                        style={{ width: `${pct}%` }}
-                      />
+                      <div className="h-full bg-copper-light/40 rounded-full transition-all" style={{ width: `${pct}%` }} />
                     </div>
                     <span className="text-xs text-ivory font-bold w-6 text-right">{count}</span>
                   </div>
