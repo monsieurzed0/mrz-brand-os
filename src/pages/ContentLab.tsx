@@ -1,10 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Lightbulb, Plus, Sparkles, Grid3X3, List, Filter } from 'lucide-react';
-
 import Topbar from '@/components/Topbar';
 import SectionCard from '@/components/SectionCard';
 import StatusBadge from '@/components/StatusBadge';
-
 import { useStore } from '@/lib/useStore';
 import { api } from '@/lib/api';
 import { useApiQuery } from '@/hooks/useApiQuery';
@@ -79,7 +77,6 @@ export default function ContentLab() {
   const [filterStatus, setFilterStatus] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-
   const [form, setForm] = useState<Partial<UiContentIdea>>({
     subject: '',
     angle: '',
@@ -123,24 +120,19 @@ export default function ContentLab() {
       showToast('Sujet manquant');
       return;
     }
-
     try {
       const payload = mapUiIdeaToApi(form);
-
       if (editId) {
         await api.updateContentIdea(editId, payload);
-
         setIdeasData((prev: any) =>
           (prev || []).map((item: any) =>
             item.id === editId ? { ...item, ...payload } : item
           )
         );
-
         showToast('Idée mise à jour');
         setEditId(null);
       } else {
         const result: any = await api.createContentIdea(payload);
-
         setIdeasData((prev: any) => [
           ...(prev || []),
           {
@@ -150,10 +142,8 @@ export default function ContentLab() {
             updated_at: new Date().toISOString(),
           },
         ]);
-
         showToast('Idée ajoutée');
       }
-
       resetForm();
       setShowForm(false);
     } catch (err) {
@@ -161,53 +151,15 @@ export default function ContentLab() {
     }
   };
 
-    const generateIdeas = async () => {
-  try {
-    const result: any = await api.runContentStrategist({ count: 5 });
-
-    if (result?.ideas && Array.isArray(result.ideas)) {
-      setIdeasData((prev: any) => [...(prev || []), ...result.ideas]);
-    }
-
-    showToast(`${result?.count || 0} idées générées`);
-  } catch (err) {
-    showToast(err instanceof Error ? err.message : 'Erreur génération idées');
-  }
-};
-
-    const angles = ['Éducatif', 'Storytelling', 'Opinion', 'Tutoriel rapide', 'Behind the scenes'];
-    const targets = ['Entrepreneurs', 'PME', 'Freelances', 'Directeurs marketing', 'Startups'];
-
+  const generateIdeas = async () => {
     try {
-      const createdItems = [];
-
-      for (let i = 0; i < subjects.length; i++) {
-        const payload = {
-          sujet: subjects[i],
-          angle: angles[i],
-          cible: targets[i],
-          produit: PRODUCTS[i % PRODUCTS.length] as Product,
-          plateforme: PLATFORMS[i % PLATFORMS.length] as Platform,
-          duree: DURATIONS[i % DURATIONS.length] as Duration,
-          cta: 'Découvre plus — lien en bio',
-          source: 'Génération IA',
-          status: 'idea_pending' as ContentIdeaStatus,
-        };
-
-        const result: any = await api.createContentIdea(payload);
-
-        createdItems.push({
-          id: result.id,
-          ...payload,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
+      const result: any = await api.runContentStrategist({ count: 5 });
+      if (result?.ideas && Array.isArray(result.ideas)) {
+        setIdeasData((prev: any) => [...(prev || []), ...result.ideas]);
       }
-
-      setIdeasData((prev: any) => [...(prev || []), ...createdItems]);
-      showToast('5 idées générées');
+      showToast(`${result?.count || 0} idées générées`);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Erreur lors de la génération');
+      showToast(err instanceof Error ? err.message : 'Erreur génération idées');
     }
   };
 
@@ -230,7 +182,6 @@ export default function ContentLab() {
   return (
     <div>
       <Topbar title="Content Lab" />
-
       <div className="p-6 space-y-5 animate-fade-in">
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
@@ -241,7 +192,6 @@ export default function ContentLab() {
               {allIdeas.length} idées
             </span>
           </div>
-
           <div className="flex items-center gap-2">
             <button
               onClick={generateIdeas}
@@ -249,7 +199,6 @@ export default function ContentLab() {
             >
               <Sparkles size={14} /> Générer 5 idées IA
             </button>
-
             <button
               onClick={() => {
                 setEditId(null);
@@ -260,7 +209,6 @@ export default function ContentLab() {
             >
               <Plus size={14} /> Nouvelle idée
             </button>
-
             <div className="flex border border-exec/15 rounded-lg overflow-hidden">
               <button
                 onClick={() => setView('table')}
@@ -284,7 +232,6 @@ export default function ContentLab() {
         {/* Filters */}
         <div className="flex items-center gap-3 flex-wrap">
           <Filter size={14} className="text-subtle" />
-
           <select
             value={filterProduct}
             onChange={(e) => setFilterProduct(e.target.value)}
@@ -297,7 +244,6 @@ export default function ContentLab() {
               </option>
             ))}
           </select>
-
           <select
             value={filterPlatform}
             onChange={(e) => setFilterPlatform(e.target.value)}
@@ -310,7 +256,6 @@ export default function ContentLab() {
               </option>
             ))}
           </select>
-
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
@@ -337,7 +282,6 @@ export default function ContentLab() {
                   className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30"
                 />
               </div>
-
               <div>
                 <label className="text-xs text-subtle font-semibold">Angle</label>
                 <input
@@ -346,7 +290,6 @@ export default function ContentLab() {
                   className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30"
                 />
               </div>
-
               <div>
                 <label className="text-xs text-subtle font-semibold">Cible</label>
                 <input
@@ -355,7 +298,6 @@ export default function ContentLab() {
                   className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30"
                 />
               </div>
-
               <div>
                 <label className="text-xs text-subtle font-semibold">Produit</label>
                 <select
@@ -370,7 +312,6 @@ export default function ContentLab() {
                   ))}
                 </select>
               </div>
-
               <div>
                 <label className="text-xs text-subtle font-semibold">Plateforme</label>
                 <select
@@ -385,7 +326,6 @@ export default function ContentLab() {
                   ))}
                 </select>
               </div>
-
               <div>
                 <label className="text-xs text-subtle font-semibold">Durée (s)</label>
                 <select
@@ -400,7 +340,6 @@ export default function ContentLab() {
                   ))}
                 </select>
               </div>
-
               <div>
                 <label className="text-xs text-subtle font-semibold">CTA</label>
                 <input
@@ -409,7 +348,6 @@ export default function ContentLab() {
                   className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30"
                 />
               </div>
-
               <div>
                 <label className="text-xs text-subtle font-semibold">Source</label>
                 <input
@@ -418,7 +356,6 @@ export default function ContentLab() {
                   className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30"
                 />
               </div>
-
               <div>
                 <label className="text-xs text-subtle font-semibold">Statut</label>
                 <select
@@ -434,7 +371,6 @@ export default function ContentLab() {
                 </select>
               </div>
             </div>
-
             <div className="flex gap-2 mt-4">
               <button
                 onClick={handleSave}
@@ -468,7 +404,6 @@ export default function ContentLab() {
                     <th className="text-left px-4 py-3 text-xs font-semibold text-subtle uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
-
                 <tbody className="divide-y divide-exec/5">
                   {ideas.map((idea) => (
                     <tr key={idea.id} className="hover:bg-carbon/40 transition">
@@ -515,7 +450,6 @@ export default function ContentLab() {
                     {ideas.filter((i) => i.status === status).length}
                   </span>
                 </div>
-
                 <div className="p-3 space-y-2 min-h-[100px]">
                   {ideas
                     .filter((i) => i.status === status)
@@ -549,7 +483,6 @@ export default function ContentLab() {
               {PRODUCTS.map((p) => {
                 const count = allIdeas.filter((i) => i.product === p).length;
                 const pct = allIdeas.length > 0 ? (count / allIdeas.length) * 100 : 0;
-
                 return (
                   <div key={p} className="flex items-center gap-3">
                     <span className="text-xs text-muted w-32 truncate">{p}</span>
@@ -565,13 +498,11 @@ export default function ContentLab() {
               })}
             </div>
           </SectionCard>
-
           <SectionCard title="Distribution par plateforme">
             <div className="space-y-2">
               {PLATFORMS.map((p) => {
                 const count = allIdeas.filter((i) => i.platform === p).length;
                 const pct = allIdeas.length > 0 ? (count / allIdeas.length) * 100 : 0;
-
                 return (
                   <div key={p} className="flex items-center gap-3">
                     <span className="text-xs text-muted w-32 truncate">{p}</span>
