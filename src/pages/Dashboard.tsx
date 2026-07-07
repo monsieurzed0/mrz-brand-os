@@ -138,7 +138,9 @@ export default function Dashboard() {
           </SectionCard>
 
           <SectionCard title="Brand Pulse" subtitle="Santé globale de la marque">
-            <SafeList items={vm.brandPulse} />
+            <div className="flex justify-center" style={{ height: '200px' }}>
+              <BrandPulseRadar data={vm.brandPulse} />
+            </div>
           </SectionCard>
 
           <SectionCard title="Agent Heartbeat" subtitle="État des agents IA">
