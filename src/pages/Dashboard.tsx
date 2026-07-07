@@ -23,6 +23,9 @@ import KPICard from '@/components/KPICard';
 import SectionCard from '@/components/SectionCard';
 import StatusBadge from '@/components/StatusBadge';
 
+import ChartGuard from '@/components/ChartGuard';
+import BrandPulseRadar from '@/components/charts/BrandPulseRadar';
+
 import { api } from '@/lib/api';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { ASSETS, CLIENT_LOGOS } from '@/lib/constants';
@@ -78,6 +81,15 @@ export default function Dashboard() {
     { label: 'Revue hebdo', icon: Calendar, route: '/weekly' },
   ];
 
+  const safeBrandPulse = Array.isArray(vm.brandPulse)
+  ? vm.brandPulse
+      .map((item: any) => ({
+        label: String(item?.label || ''),
+        value: Number(item?.value || 0),
+      }))
+      .filter((item: any) => item.label)
+  : [];
+  
   return (
     <div>
       <Topbar title="Dashboard" />
@@ -137,10 +149,13 @@ export default function Dashboard() {
             )}
           </SectionCard>
 
+          
           <SectionCard title="Brand Pulse" subtitle="Santé globale de la marque">
-            <div className="flex justify-center" style={{ height: '200px' }}>
-              <BrandPulseRadar data={vm.brandPulse} />
-            </div>
+              <ChartGuard title="Brand Pulse">
+                <div className="flex justify-center" style={{ height: '200px' }}>
+                    <BrandPulseRadar data={safeBrandPulse} />
+                </div>
+              </ChartGuard>
           </SectionCard>
 
           <SectionCard title="Agent Heartbeat" subtitle="État des agents IA">
