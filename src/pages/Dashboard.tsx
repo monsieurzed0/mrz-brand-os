@@ -26,6 +26,9 @@ import StatusBadge from '@/components/StatusBadge';
 import ChartGuard from '@/components/ChartGuard';
 import BrandPulseRadar from '@/components/charts/BrandPulseRadar';
 
+import FlowChart from '@/components/charts/FlowChart';
+import ChartGuard from '@/components/ChartGuard';
+
 import { api } from '@/lib/api';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { ASSETS, CLIENT_LOGOS } from '@/lib/constants';
@@ -83,6 +86,15 @@ export default function Dashboard() {
 
   const safeBrandPulse = Array.isArray(vm.brandPulse)
   ? vm.brandPulse
+      .map((item: any) => ({
+        label: String(item?.label || ''),
+        value: Number(item?.value || 0),
+      }))
+      .filter((item: any) => item.label)
+  : [];
+
+  const safeContentFlow = Array.isArray(vm.contentFlow)
+  ? vm.contentFlow
       .map((item: any) => ({
         label: String(item?.label || ''),
         value: Number(item?.value || 0),
@@ -193,7 +205,9 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <SectionCard title="Content Flow" subtitle="Pipeline éditorial">
-            <SafeList items={vm.contentFlow} />
+            <ChartGuard title="Content Flow">
+              <FlowChart steps={safeContentFlow} />
+            </ChartGuard>
           </SectionCard>
 
           <SectionCard title="Lead Funnel" subtitle="Pipeline commercial">
