@@ -193,11 +193,11 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
-    runContentStrategist: (payload: Partial<ContentEngineOutput>) =>
-    apiFetch('/api/content-engine-outputs', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
+  runContentStrategist: (payload?: { product?: string; plateforme?: string; count?: number }) =>
+  apiFetch('/api/agents/content-strategist/run', {
+    method: 'POST',
+    body: JSON.stringify(payload || {}),
+  }),
   updateContentEngineOutput: (id: string, payload: Partial<ContentEngineOutput>) =>
     apiFetch(`/api/content-engine-outputs/${id}`, {
       method: 'PUT',
