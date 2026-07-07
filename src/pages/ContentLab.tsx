@@ -161,14 +161,19 @@ export default function ContentLab() {
     }
   };
 
-  const generateIdeas = async () => {
-    const subjects = [
-      "Comment construire une marque premium depuis l'Afrique",
-      "Les secrets d'un bon hook vidéo",
-      'WhatsApp Business : stratégie vs improvisation',
-      'Personal branding : par où commencer',
-      'Design premium : les codes qui comptent',
-    ];
+    const generateIdeas = async () => {
+  try {
+    const result: any = await api.runContentStrategist({ count: 5 });
+
+    if (result?.ideas && Array.isArray(result.ideas)) {
+      setIdeasData((prev: any) => [...(prev || []), ...result.ideas]);
+    }
+
+    showToast(`${result?.count || 0} idées générées`);
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : 'Erreur génération idées');
+  }
+};
 
     const angles = ['Éducatif', 'Storytelling', 'Opinion', 'Tutoriel rapide', 'Behind the scenes'];
     const targets = ['Entrepreneurs', 'PME', 'Freelances', 'Directeurs marketing', 'Startups'];
