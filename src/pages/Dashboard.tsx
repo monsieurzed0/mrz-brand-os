@@ -34,6 +34,8 @@ import { useApiQuery } from '@/hooks/useApiQuery';
 import { ASSETS, CLIENT_LOGOS } from '@/lib/constants';
 import { buildDashboardViewModel } from '@/lib/dashboardViewModel';
 
+import FunnelChart from '@/components/charts/FunnelChart';
+
 function SafeList({ items }: { items: { label: string; value: number }[] }) {
   return (
     <div className="space-y-2">
@@ -95,6 +97,15 @@ export default function Dashboard() {
 
   const safeContentFlow = Array.isArray(vm.contentFlow)
   ? vm.contentFlow
+      .map((item: any) => ({
+        label: String(item?.label || ''),
+        value: Number(item?.value || 0),
+      }))
+      .filter((item: any) => item.label)
+  : [];
+
+  const safeLeadFunnel = Array.isArray(vm.leadFunnel)
+  ? vm.leadFunnel
       .map((item: any) => ({
         label: String(item?.label || ''),
         value: Number(item?.value || 0),
@@ -211,7 +222,9 @@ export default function Dashboard() {
           </SectionCard>
 
           <SectionCard title="Lead Funnel" subtitle="Pipeline commercial">
-            <SafeList items={vm.leadFunnel} />
+            <ChartGuard title="Lead Funnel">
+              <FunnelChart steps={safeLeadFunnel} />
+            </ChartGuard>
           </SectionCard>
 
           <SectionCard title="Project Health" subtitle="Santé des projets">
