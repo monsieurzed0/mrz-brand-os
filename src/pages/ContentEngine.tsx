@@ -82,7 +82,7 @@ export default function ContentEngine() {
 
   const [selectedIdeaId, setSelectedIdeaId] = useState('');
   const [generated, setGenerated] = useState<GeneratedFormat[]>([]);
-  const [activeCategory, setActiveCategory] = useState<'video' | 'text' | 'visual' | null>(null);
+  const [activeCategory, setActiveCategory] = useState<'video' | 'text' | 'visual' | null>('video');
 
   const readyIdeas: UiIdea[] = useMemo(() => {
     const safe = Array.isArray(contentIdeasData) ? contentIdeasData : [];
@@ -160,7 +160,6 @@ export default function ContentEngine() {
         description: 'Format natif professionnel',
         content: `Format natif carré 1:1\nSous-titres intégrés\nTon professionnel — angle "${s.angle}"\nSujet : ${s.subject}\nCTA : ${s.cta}`,
       },
-
       {
         category: 'text',
         format: 'Post LinkedIn',
@@ -197,7 +196,6 @@ export default function ContentEngine() {
         description: 'Accroche copywriting',
         content: `"${s.subject.split(' ').slice(0, 8).join(' ')}... et si tout ce que tu savais était faux ?"`,
       },
-
       {
         category: 'visual',
         format: 'Prompt visuel premium',
@@ -373,11 +371,7 @@ export default function ContentEngine() {
                   >
                     <config.icon size={18} />
                     <span className="font-semibold">{config.label}</span>
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full ${
-                        isActive ? 'bg-dark/30' : 'bg-deep'
-                      }`}
-                    >
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${isActive ? 'bg-dark/30' : 'bg-deep'}`}>
                       {config.count}
                     </span>
                   </button>
@@ -407,9 +401,7 @@ export default function ContentEngine() {
                     </div>
 
                     <div className="p-3 rounded-lg bg-deep border border-exec/5 max-h-36 overflow-y-auto mb-3">
-                      <p className="text-xs text-muted whitespace-pre-wrap leading-relaxed">
-                        {item.content}
-                      </p>
+                      <p className="text-xs text-muted whitespace-pre-wrap leading-relaxed">{item.content}</p>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -440,9 +432,7 @@ export default function ContentEngine() {
                               showToast('Envoyé vers Script Room');
                               navigate('/scripts');
                             } catch (err) {
-                              showToast(
-                                err instanceof Error ? err.message : 'Erreur envoi Script Room'
-                              );
+                              showToast(err instanceof Error ? err.message : 'Erreur envoi Script Room');
                             }
                           }}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-exec/15 text-[10px] text-muted font-semibold hover:border-copper/20 hover:text-copper-light transition"
@@ -461,9 +451,7 @@ export default function ContentEngine() {
                                 angle: selectedIdea.angle,
                                 produit: selectedIdea.product,
                                 hook_visuel:
-                                  item.format === 'Hook visuel'
-                                    ? item.content
-                                    : selectedIdea.subject,
+                                  item.format === 'Hook visuel' ? item.content : selectedIdea.subject,
                                 prompt_principal: item.content,
                                 variante_a: '',
                                 variante_b: '',
@@ -479,9 +467,7 @@ export default function ContentEngine() {
                               showToast('Envoyé vers Visual Lab');
                               navigate('/visual-lab');
                             } catch (err) {
-                              showToast(
-                                err instanceof Error ? err.message : 'Erreur envoi Visual Lab'
-                              );
+                              showToast(err instanceof Error ? err.message : 'Erreur envoi Visual Lab');
                             }
                           }}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-exec/15 text-[10px] text-muted font-semibold hover:border-copper/20 hover:text-copper-light transition"
