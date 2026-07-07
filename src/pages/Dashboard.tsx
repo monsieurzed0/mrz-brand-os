@@ -29,6 +29,9 @@ import BrandPulseRadar from '@/components/charts/BrandPulseRadar';
 import FlowChart from '@/components/charts/FlowChart';
 import ChartGuard from '@/components/ChartGuard';
 
+import FlowChart from '@/components/charts/FlowChart';
+import ChartGuard from '@/components/ChartGuard';
+
 import { api } from '@/lib/api';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { ASSETS, CLIENT_LOGOS } from '@/lib/constants';
@@ -106,6 +109,15 @@ export default function Dashboard() {
 
   const safeLeadFunnel = Array.isArray(vm.leadFunnel)
   ? vm.leadFunnel
+      .map((item: any) => ({
+        label: String(item?.label || ''),
+        value: Number(item?.value || 0),
+      }))
+      .filter((item: any) => item.label)
+  : [];
+
+  const safeProjectHealth = Array.isArray(vm.projectHealth)
+  ? vm.projectHealth
       .map((item: any) => ({
         label: String(item?.label || ''),
         value: Number(item?.value || 0),
@@ -228,7 +240,9 @@ export default function Dashboard() {
           </SectionCard>
 
           <SectionCard title="Project Health" subtitle="Santé des projets">
-            <SafeList items={vm.projectHealth} />
+            <ChartGuard title="Project Health">
+              <FlowChart steps={safeProjectHealth} />
+            </ChartGuard>
           </SectionCard>
         </div>
 
