@@ -197,6 +197,16 @@ export const api = {
     apiFetch<{ ok: boolean; count: number; ideas: ContentIdea[] }>('/api/agents/content-strategist/run', {
       method: 'POST',
       body: JSON.stringify(payload || {}),
+
+      runScriptwriter: (payload?: {
+      content_idea_id?: string;
+      platform_override?: string;
+      source_output_id?: string;
+    }) =>
+      apiFetch('/api/agents/scriptwriter/run', {
+        method: 'POST',
+        body: JSON.stringify(payload || {}),
+      }),
     }),
 
   // Dashboard
