@@ -263,6 +263,12 @@ export const api = {
       method: 'DELETE',
     }),
 
+  runScriptwriter: (payload?: { content_idea_id?: string; platform_override?: string; source_output_id?: string }) =>
+    apiFetch('/api/agents/scriptwriter/run', {
+      method: 'POST',
+      body: JSON.stringify(payload || {}),
+    }),
+  
   // Leads
   getLeads: () => apiFetch<LeadItem[]>('/api/leads'),
   createLead: (payload: Partial<LeadItem>) =>
