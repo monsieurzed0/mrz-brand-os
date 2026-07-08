@@ -41,6 +41,14 @@ function mapDescription(type: string, label: string) {
   return `Format texte — ${label}`;
 }
 
+function mapFormatToPlatform(format: string) {
+  if (format === 'TikTok') return 'TikTok';
+  if (format === 'YouTube Shorts') return 'YouTube Shorts';
+  if (format === 'Instagram Reel') return 'Instagram Reel';
+  if (format === 'Vidéo LinkedIn') return 'LinkedIn';
+  return 'TikTok';
+}
+
 async function persistOutputs(selectedIdea: UiIdea, outputs: GeneratedFormat[]) {
   const saved: GeneratedFormat[] = [];
 
