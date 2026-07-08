@@ -56,7 +56,9 @@ export default function ScriptRoom() {
   });
 
   const scripts: UiScript[] = useMemo(() => {
-    return (scriptsData || []).map((s: any) => ({
+    const safe = Array.isArray(scriptsData) ? scriptsData : [];
+
+    return safe.map((s: any) => ({
       id: s.id,
       ideaId: s.content_idea_id || '',
       subject: s.sujet || '',
@@ -74,12 +76,30 @@ export default function ScriptRoom() {
   }, [scriptsData]);
 
   const readyIdeas = useMemo(() => {
-    return (contentIdeasData || []).filter(
+    const safe = Array.isArray(contentIdeasData) ? contentIdeasData : [];
+
+    return safe.filter(
       (i: any) => i.status === 'idea_ready' || i.status === 'script_pending'
     );
   }, [contentIdeasData]);
 
   const selected = scripts.find((s) => s.id === selectedId);
+
+  const resetForm = () => {
+    setForm({
+      subject: '',
+      hook: '',
+      script: '',
+      ctaGenerated: '',
+      caption: '',
+      angle: '',
+      target: '',
+      product: 'Mr Z Brand',
+      platform: 'TikTok',
+      status: 'draft',
+      versions: [],
+    });
+  };
 
   const handleSave = async () => {
     if (!form.subject) {
@@ -110,21 +130,7 @@ export default function ScriptRoom() {
       };
 
       setScriptsData((prev: any) => [...(prev || []), newScript]);
-
-      setForm({
-        subject: '',
-        hook: '',
-        script: '',
-        ctaGenerated: '',
-        caption: '',
-        angle: '',
-        target: '',
-        product: 'Mr Z Brand',
-        platform: 'TikTok',
-        status: 'draft',
-        versions: [],
-      });
-
+      resetForm();
       setShowForm(false);
       showToast('Script ajouté');
     } catch (err) {
@@ -132,31 +138,43 @@ export default function ScriptRoom() {
     }
   };
 
-  const generateScript = () => {
+  const generateScript = async () => {
     if (readyIdeas.length === 0) {
-      showToast("Aucune idée prête à scripter");
+      showToast('Aucune idée prête à scripter');
       return;
     }
 
     const idea = readyIdeas[0];
 
-    setForm({
-      ideaId: idea.id,
-      subject: idea.sujet,
-      hook: `${idea.angle} : ${String(idea.sujet).split(' ').slice(0, 5).join(' ')}...`,
-      script: `Hook : ${idea.sujet}\n\n[Développement du sujet basé sur l'angle "${idea.angle}"]\n\n[Argumentation pour la cible "${idea.cible}"]\n\n[Transition vers le CTA]\n\nCTA : ${idea.cta}`,
-      ctaGenerated: idea.cta,
-      caption: `${idea.sujet} — ${idea.angle}`,
-      angle: idea.angle,
-      target: idea.cible,
-      product: idea.produit,
-      platform: idea.plateforme,
-      status: 'draft',
-      versions: [],
-    });
+    try {
+      const result: any = await api.runScriptwriter({
+        content_idea_id: idea.id,
+      });
 
-    setShowForm(true);
-    showToast("Script généré depuis l'idée");
+      const script = result?.script;
+
+      if (!script) {
+        showToast('Aucun script retourné');
+        return;
+      }
+
+      setScriptsData((prev: any) => {
+        const existing = (prev || []).find((item: any) => item.id === script.id);
+
+        if (existing) {
+          return (prev || []).map((item: any) =>
+            item.id === script.id ? script : item
+          );
+        }
+
+        return [...(prev || []), script];
+      });
+
+      setSelectedId(script.id);
+      showToast(`Script généré (${result?.mode || 'ok'})`);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Erreur génération script');
+    }
   };
 
   const handleApprove = async (id: string) => {
@@ -179,7 +197,9 @@ export default function ScriptRoom() {
     try {
       await api.deleteScript(id);
 
-      setScriptsData((prev: any) => (prev || []).filter((item: any) => item.id !== id));
+      setScriptsData((prev: any) =>
+        (prev || []).filter((item: any) => item.id !== id)
+      );
 
       if (selectedId === id) setSelectedId(null);
       showToast('Script supprimé');
@@ -193,7 +213,6 @@ export default function ScriptRoom() {
       <Topbar title="Script Room" />
 
       <div className="p-6 space-y-5 animate-fade-in">
-        {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2">
             <FileText size={20} className="text-copper" />
@@ -223,7 +242,6 @@ export default function ScriptRoom() {
         {loading ? <div className="text-sm text-subtle">Chargement des scripts...</div> : null}
         {error ? <div className="text-sm text-red-400">Erreur : {error}</div> : null}
 
-        {/* Form */}
         {showForm && (
           <SectionCard title="Nouveau script">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -322,7 +340,6 @@ export default function ScriptRoom() {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Scripts list */}
           <div className="lg:col-span-2">
             <div className="rounded-xl border border-exec/10 overflow-hidden">
               <table className="w-full text-sm">
@@ -392,7 +409,6 @@ export default function ScriptRoom() {
             </div>
           </div>
 
-          {/* Script detail panel */}
           <div>
             {selected ? (
               <SectionCard title="Détail du script">
@@ -439,7 +455,7 @@ export default function ScriptRoom() {
                     )}
 
                     <button
-                      onClick={() => showToast('Régénération simulée')}
+                      onClick={generateScript}
                       className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-exec/15 text-muted text-xs hover:border-copper/30 transition"
                     >
                       <RefreshCw size={12} /> Régénérer
