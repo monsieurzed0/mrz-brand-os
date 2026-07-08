@@ -77,7 +77,6 @@ export default function ScriptRoom() {
 
   const readyIdeas = useMemo(() => {
     const safe = Array.isArray(contentIdeasData) ? contentIdeasData : [];
-
     return safe.filter(
       (i: any) => i.status === 'idea_ready' || i.status === 'script_pending'
     );
@@ -130,6 +129,7 @@ export default function ScriptRoom() {
       };
 
       setScriptsData((prev: any) => [...(prev || []), newScript]);
+
       resetForm();
       setShowForm(false);
       showToast('Script ajouté');
