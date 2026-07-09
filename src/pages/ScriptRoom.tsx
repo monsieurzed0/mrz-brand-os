@@ -77,6 +77,7 @@ export default function ScriptRoom() {
 
   const readyIdeas = useMemo(() => {
     const safe = Array.isArray(contentIdeasData) ? contentIdeasData : [];
+
     return safe.filter(
       (i: any) => i.status === 'idea_ready' || i.status === 'script_pending'
     );
@@ -129,7 +130,6 @@ export default function ScriptRoom() {
       };
 
       setScriptsData((prev: any) => [...(prev || []), newScript]);
-
       resetForm();
       setShowForm(false);
       showToast('Script ajouté');
@@ -172,7 +172,6 @@ export default function ScriptRoom() {
 
       setSelectedId(script.id);
       showToast(`Script généré (${result?.mode || 'ok'})`);
-      window.dispatchEvent(new CustomEvent('mrz-refresh-notifications'));
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Erreur génération script');
     }
@@ -189,13 +188,11 @@ export default function ScriptRoom() {
       );
 
       showToast('Script validé');
-      window.dispatchEvent(new CustomEvent('mrz-refresh-notifications'));
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Erreur lors de la validation');
     }
   };
 
-  
   const handleDelete = async (id: string) => {
     try {
       await api.deleteScript(id);
