@@ -138,37 +138,44 @@ export default function ScriptRoom() {
     }
   };
 
-const generateScript = async () => {
-  if (readyIdeas.length === 0) {
-    showToast("Aucune idée prête à scripter");
-    return;
-  }
-
-  const idea = readyIdeas[0];
-
-  try {
-    const result: any = await api.runScriptwriter({ content_idea_id: idea.id });
-    const script = result?.script;
-
-    if (!script) {
-      showToast('Aucun script retourné');
+  const generateScript = async () => {
+    if (readyIdeas.length === 0) {
+      showToast('Aucune idée prête à scripter');
       return;
     }
 
-    setScriptsData((prev: any) => {
-      const existing = (prev || []).find((item: any) => item.id === script.id);
-      if (existing) {
-        return (prev || []).map((item: any) => (item.id === script.id ? script : item));
-      }
-      return [...(prev || []), script];
-    });
+    const idea = readyIdeas[0];
 
-    setSelectedId(script.id);
-    showToast(`Script généré (${result?.mode || 'unknown'})`);
-  } catch (err) {
-    showToast(err instanceof Error ? err.message : 'Erreur génération script');
-  }
-};
+    try {
+      const result: any = await api.runScriptwriter({
+        content_idea_id: idea.id,
+      });
+
+      const script = result?.script;
+
+      if (!script) {
+        showToast('Aucun script retourné');
+        return;
+      }
+
+      setScriptsData((prev: any) => {
+        const existing = (prev || []).find((item: any) => item.id === script.id);
+
+        if (existing) {
+          return (prev || []).map((item: any) =>
+            item.id === script.id ? script : item
+          );
+        }
+
+        return [...(prev || []), script];
+      });
+
+      setSelectedId(script.id);
+      showToast(`Script généré (${result?.mode || 'ok'})`);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Erreur génération script');
+    }
+  };
 
   const handleApprove = async (id: string) => {
     try {
