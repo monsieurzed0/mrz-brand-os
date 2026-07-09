@@ -195,6 +195,7 @@ export default function ScriptRoom() {
     }
   };
 
+  
   const handleDelete = async (id: string) => {
     try {
       await api.deleteScript(id);
