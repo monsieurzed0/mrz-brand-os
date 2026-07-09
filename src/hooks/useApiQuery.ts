@@ -41,7 +41,7 @@ export function useApiQuery<T>(queryFn: () => Promise<T>, deps: unknown[] = []) 
     return () => {
       cancelled = true;
     };
-  }, deps);
+  }, [queryFn, ...deps]);
 
   return { data, loading, error, setData, refetch };
 }
