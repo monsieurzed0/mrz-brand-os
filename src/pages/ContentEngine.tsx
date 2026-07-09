@@ -41,14 +41,6 @@ function mapDescription(type: string, label: string) {
   return `Format texte — ${label}`;
 }
 
-function mapFormatToPlatform(format: string) {
-  if (format === 'TikTok') return 'TikTok';
-  if (format === 'YouTube Shorts') return 'YouTube Shorts';
-  if (format === 'Instagram Reel') return 'Instagram Reel';
-  if (format === 'Vidéo LinkedIn') return 'LinkedIn';
-  return 'TikTok';
-}
-
 async function persistOutputs(selectedIdea: UiIdea, outputs: GeneratedFormat[]) {
   const saved: GeneratedFormat[] = [];
 
@@ -251,6 +243,28 @@ export default function ContentEngine() {
     showToast('Copié dans le presse-papier');
   };
 
+  const openVisualLab = (item: GeneratedFormat) => {
+    if (!selectedIdea) {
+      showToast('Aucune idée sélectionnée');
+      return;
+    }
+
+    navigate('/visual-lab', {
+      state: {
+        source: 'content-engine',
+        subject: selectedIdea.subject,
+        angle: selectedIdea.angle,
+        product: selectedIdea.product,
+        platform: selectedIdea.platform,
+        objective: item.description,
+        seedPrompt: item.content,
+        formatLabel: item.format,
+      },
+    });
+
+    showToast('Brief envoyé vers Visual Lab');
+  };
+
   const categoryConfig = {
     video: {
       icon: Video,
@@ -285,6 +299,7 @@ export default function ContentEngine() {
       <Topbar title="Content Engine" />
 
       <div className="p-6 space-y-6 animate-fade-in">
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-copper/15">
@@ -307,6 +322,7 @@ export default function ContentEngine() {
         {loadingOutputs ? <div className="text-sm text-subtle">Chargement des formats...</div> : null}
         {outputsError ? <div className="text-sm text-red-400">Erreur outputs : {outputsError}</div> : null}
 
+        {/* Idea selector */}
         <SectionCard>
           <div className="flex flex-col lg:flex-row lg:items-end gap-4">
             <div className="flex-1">
@@ -360,6 +376,7 @@ export default function ContentEngine() {
           )}
         </SectionCard>
 
+        {/* Category tabs */}
         {generated.length > 0 && (
           <>
             <div className="flex gap-3">
@@ -379,7 +396,11 @@ export default function ContentEngine() {
                   >
                     <config.icon size={18} />
                     <span className="font-semibold">{config.label}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${isActive ? 'bg-dark/30' : 'bg-deep'}`}>
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full ${
+                        isActive ? 'bg-dark/30' : 'bg-deep'
+                      }`}
+                    >
                       {config.count}
                     </span>
                   </button>
@@ -387,11 +408,12 @@ export default function ContentEngine() {
               })}
             </div>
 
+            {/* Generated content grid */}
             {activeCategory && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {currentItems.map((item, i) => (
                   <div
-                    key={i}
+                    key={item.id || i}
                     className="rounded-xl border border-exec/10 bg-carbon p-5 hover:border-copper/20 transition group"
                   >
                     <div className="flex items-start justify-between mb-3">
@@ -409,7 +431,9 @@ export default function ContentEngine() {
                     </div>
 
                     <div className="p-3 rounded-lg bg-deep border border-exec/5 max-h-36 overflow-y-auto mb-3">
-                      <p className="text-xs text-muted whitespace-pre-wrap leading-relaxed">{item.content}</p>
+                      <p className="text-xs text-muted whitespace-pre-wrap leading-relaxed">
+                        {item.content}
+                      </p>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -440,7 +464,9 @@ export default function ContentEngine() {
                               showToast('Envoyé vers Script Room');
                               navigate('/scripts');
                             } catch (err) {
-                              showToast(err instanceof Error ? err.message : 'Erreur envoi Script Room');
+                              showToast(
+                                err instanceof Error ? err.message : 'Erreur envoi Script Room'
+                              );
                             }
                           }}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-exec/15 text-[10px] text-muted font-semibold hover:border-copper/20 hover:text-copper-light transition"
@@ -449,35 +475,9 @@ export default function ContentEngine() {
                         </button>
                       )}
 
-                      {item.category === 'visual' && selectedIdea && (
+                      {item.category === 'visual' && (
                         <button
-                          onClick={async () => {
-                            try {
-                              await api.createVisualPrompt({
-                                related_script_id: null,
-                                sujet: selectedIdea.subject,
-                                angle: selectedIdea.angle,
-                                produit: selectedIdea.product,
-                                hook_visuel:
-                                  item.format === 'Hook visuel' ? item.content : selectedIdea.subject,
-                                prompt_principal: item.content,
-                                variante_a: '',
-                                variante_b: '',
-                                variante_c: '',
-                                negative_prompt:
-                                  'Pas de bleu, pas de néon, pas de stock cheap, pas de texte intégré.',
-                                photoshop_note:
-                                  item.format === 'Note Photoshop'
-                                    ? item.content
-                                    : 'Prévoir un espace de titre dans la composition.',
-                                status: 'draft',
-                              });
-                              showToast('Envoyé vers Visual Lab');
-                              navigate('/visual-lab');
-                            } catch (err) {
-                              showToast(err instanceof Error ? err.message : 'Erreur envoi Visual Lab');
-                            }
-                          }}
+                          onClick={() => openVisualLab(item)}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-exec/15 text-[10px] text-muted font-semibold hover:border-copper/20 hover:text-copper-light transition"
                         >
                           <Palette size={10} /> Visual Lab
@@ -491,6 +491,7 @@ export default function ContentEngine() {
           </>
         )}
 
+        {/* Empty state */}
         {generated.length === 0 && (
           <div className="rounded-xl border border-exec/10 bg-carbon p-12 text-center">
             <div className="inline-flex p-4 rounded-2xl bg-copper/10 mb-4">
