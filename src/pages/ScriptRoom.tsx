@@ -172,6 +172,7 @@ export default function ScriptRoom() {
 
       setSelectedId(script.id);
       showToast(`Script généré (${result?.mode || 'ok'})`);
+      window.dispatchEvent(new CustomEvent('mrz-refresh-notifications'));
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Erreur génération script');
     }
