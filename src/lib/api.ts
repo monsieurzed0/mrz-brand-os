@@ -34,6 +34,7 @@ export type MediaLink = {
   sort_order?: number;
 };
 
+
 export type BrandMemorySection = {
   id: string;
   section_key: string;
