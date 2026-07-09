@@ -189,6 +189,7 @@ export default function ScriptRoom() {
       );
 
       showToast('Script validé');
+      window.dispatchEvent(new CustomEvent('mrz-refresh-notifications'));
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Erreur lors de la validation');
     }
