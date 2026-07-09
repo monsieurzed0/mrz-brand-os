@@ -79,7 +79,13 @@ export default function ContentEngine() {
     api.getContentEngineOutputs,
     []
   );
-
+function mapFormatToPlatform(format: string) {
+  if (format === 'TikTok') return 'TikTok';
+  if (format === 'YouTube Shorts') return 'YouTube Shorts';
+  if (format === 'Instagram Reel') return 'Instagram Reel';
+  if (format === 'Vidéo LinkedIn') return 'LinkedIn';
+  return 'TikTok';
+}
   const [selectedIdeaId, setSelectedIdeaId] = useState('');
   const [generated, setGenerated] = useState<GeneratedFormat[]>([]);
   const [activeCategory, setActiveCategory] = useState<'video' | 'text' | 'visual' | null>('video');
@@ -445,34 +451,28 @@ export default function ContentEngine() {
                       </button>
 
                       {item.category === 'video' && selectedIdea && (
-                        <button
-                          onClick={async () => {
-                            try {
-                              await api.createScript({
-                                content_idea_id: selectedIdea.id,
-                                sujet: selectedIdea.subject,
-                                hook: item.content.split('\n')[0] || '',
-                                script: item.content,
-                                cta_genere: selectedIdea.cta,
-                                caption: selectedIdea.caption,
-                                angle: selectedIdea.angle,
-                                cible: selectedIdea.target,
-                                produit: selectedIdea.product,
-                                plateforme: item.format,
-                                status: 'draft',
-                              });
-                              showToast('Envoyé vers Script Room');
-                              navigate('/scripts');
-                            } catch (err) {
-                              showToast(
-                                err instanceof Error ? err.message : 'Erreur envoi Script Room'
-                              );
-                            }
-                          }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-exec/15 text-[10px] text-muted font-semibold hover:border-copper/20 hover:text-copper-light transition"
-                        >
-                          <FileText size={10} /> Script Room
-                        </button>
+                      <button
+                        onClick={async () => {
+                          if (!selectedIdea) return;
+                      
+                          try {
+                            const result: any = await api.runScriptwriter({
+                              content_idea_id: selectedIdea.id,
+                              platform_override: mapFormatToPlatform(item.format),
+                              source_output_id: item.id,
+                            });
+                      
+                            showToast(`Script généré (${result?.mode || 'ok'})`);
+                            window.dispatchEvent(new CustomEvent('mrz-refresh-notifications'));
+                            navigate('/scripts');
+                          } catch (err) {
+                            showToast(err instanceof Error ? err.message : 'Erreur Scriptwriter');
+                          }
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-exec/15 text-[10px] text-muted font-semibold hover:border-copper/20 hover:text-copper-light transition"
+                      >
+                        <FileText size={10} /> Script Room
+                      </button>
                       )}
 
                       {item.category === 'visual' && (
