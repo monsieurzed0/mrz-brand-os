@@ -8,25 +8,12 @@ import { ASSETS } from '@/lib/constants';
 
 function renderContent(text: string) {
   if (!text) return '';
-
-  // 1. Normaliser les \n littéraux (backslash + n) en vrais sauts de ligne
   let html = text.replace(/\\n/g, '\n');
-
-  // 2. Échapper le HTML pour la sécurité
   html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-  // 3. Markdown bold
   html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
-  // 4. Titres markdown ### (multiligne)
   html = html.replace(/^###\s+(.*)$/gm, '<strong>$1</strong>');
-
-  // 5. Listes markdown
   html = html.replace(/^-\s+(.*)$/gm, '• $1');
-
-  // 6. Vrais sauts de ligne → <br/>
   html = html.replace(/\n/g, '<br/>');
-
   return html;
 }
 
@@ -52,15 +39,12 @@ export default function BrandMemory() {
           );
         }
       })
-      .catch(() => {
-        showToast('Erreur chargement Brand Memory');
-      })
+      .catch(() => showToast('Erreur chargement Brand Memory'))
       .finally(() => setLoading(false));
   }, []);
 
   const startEdit = (id: string, content: string) => {
     setEditingId(id);
-    // Normaliser \n littéraux pour l'éditeur (textarea affiche les newlines réels)
     setEditContent(content.replace(/\\n/g, '\n'));
   };
 
@@ -153,19 +137,22 @@ export default function BrandMemory() {
                   )
                 }
               >
-                {editingId === section.id ? (
-                  <textarea
-                    value={editContent}
-                    onChange={(e) => setEditContent(e.target.value)}
-                    rows={6}
-                    className="w-full bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30 resize-none"
-                  />
-                ) : (
-                  <div
-                    className="text-sm text-muted leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: renderContent(section.content) }}
-                  />
-                )}
+                {/* Hauteur fixe + scroll interne */}
+                <div className="max-h-[320px] overflow-y-auto pr-2">
+                  {editingId === section.id ? (
+                    <textarea
+                      value={editContent}
+                      onChange={(e) => setEditContent(e.target.value)}
+                      rows={6}
+                      className="w-full bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30 resize-none"
+                    />
+                  ) : (
+                    <div
+                      className="text-sm text-muted leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: renderContent(section.content) }}
+                    />
+                  )}
+                </div>
               </SectionCard>
             ))
           )}
