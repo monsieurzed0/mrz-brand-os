@@ -25,19 +25,13 @@ import StatusBadge from '@/components/StatusBadge';
 
 import ChartGuard from '@/components/ChartGuard';
 import BrandPulseRadar from '@/components/charts/BrandPulseRadar';
-
 import FlowChart from '@/components/charts/FlowChart';
-import ChartGuard from '@/components/ChartGuard';
-
-import FlowChart from '@/components/charts/FlowChart';
-import ChartGuard from '@/components/ChartGuard';
+import FunnelChart from '@/components/charts/FunnelChart';
 
 import { api } from '@/lib/api';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { ASSETS, CLIENT_LOGOS } from '@/lib/constants';
 import { buildDashboardViewModel } from '@/lib/dashboardViewModel';
-
-import FunnelChart from '@/components/charts/FunnelChart';
 
 function SafeList({ items }: { items: { label: string; value: number }[] }) {
   return (
@@ -90,45 +84,32 @@ export default function Dashboard() {
   ];
 
   const safeBrandPulse = Array.isArray(vm.brandPulse)
-  ? vm.brandPulse
-      .map((item: any) => ({
-        label: String(item?.label || ''),
-        value: Number(item?.value || 0),
-      }))
+    ? vm.brandPulse
+      .map((item: any) => ({ label: String(item?.label || ''), value: Number(item?.value || 0) }))
       .filter((item: any) => item.label)
-  : [];
+    : [];
 
   const safeContentFlow = Array.isArray(vm.contentFlow)
-  ? vm.contentFlow
-      .map((item: any) => ({
-        label: String(item?.label || ''),
-        value: Number(item?.value || 0),
-      }))
+    ? vm.contentFlow
+      .map((item: any) => ({ label: String(item?.label || ''), value: Number(item?.value || 0) }))
       .filter((item: any) => item.label)
-  : [];
+    : [];
 
   const safeLeadFunnel = Array.isArray(vm.leadFunnel)
-  ? vm.leadFunnel
-      .map((item: any) => ({
-        label: String(item?.label || ''),
-        value: Number(item?.value || 0),
-      }))
+    ? vm.leadFunnel
+      .map((item: any) => ({ label: String(item?.label || ''), value: Number(item?.value || 0) }))
       .filter((item: any) => item.label)
-  : [];
+    : [];
 
   const safeProjectHealth = Array.isArray(vm.projectHealth)
-  ? vm.projectHealth
-      .map((item: any) => ({
-        label: String(item?.label || ''),
-        value: Number(item?.value || 0),
-      }))
+    ? vm.projectHealth
+      .map((item: any) => ({ label: String(item?.label || ''), value: Number(item?.value || 0) }))
       .filter((item: any) => item.label)
-  : [];
-  
+    : [];
+
   return (
     <div>
       <Topbar title="Dashboard" />
-
       <div className="p-6 space-y-5 animate-fade-in">
         {summaryLoading ? <div className="text-sm text-subtle">Chargement du dashboard...</div> : null}
         {summaryError ? <div className="text-sm text-red-400">Erreur : {summaryError}</div> : null}
@@ -147,28 +128,21 @@ export default function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <SectionCard
-            title="Priorité centrale"
-            className="lg:col-span-1"
-            headerRight={<StatusBadge status="project_active" />}
-          >
+          <SectionCard title="Priorité centrale" className="lg:col-span-1" headerRight={<StatusBadge status="project_active" />}>
             {vm.weeklyPlan ? (
               <div className="space-y-3">
                 <div className="p-3.5 rounded-xl bg-copper/10 border border-copper/20">
                   <p className="text-[10px] text-copper font-bold uppercase tracking-wider mb-1.5">Priorité #1</p>
                   <p className="text-sm text-ivory font-semibold leading-snug">{vm.weeklyPlan.focus_primary}</p>
                 </div>
-
                 <div className="p-3 rounded-lg bg-deep border border-exec/10">
                   <p className="text-[10px] text-subtle font-bold uppercase tracking-wider mb-1">Priorité #2</p>
                   <p className="text-sm text-muted">{vm.weeklyPlan.focus_secondary || 'Non définie'}</p>
                 </div>
-
                 <div className="p-3 rounded-lg bg-deep border border-exec/10">
                   <p className="text-[10px] text-subtle font-bold uppercase tracking-wider mb-1">Priorité #3</p>
                   <p className="text-sm text-muted">{vm.weeklyPlan.focus_tertiary || 'Non définie'}</p>
                 </div>
-
                 {vm.weeklyPlan.main_risk ? (
                   <div className="flex items-start gap-2.5 p-3 rounded-lg bg-red-950/20 border border-red-900/20">
                     <AlertTriangle size={14} className="text-red-400 mt-0.5 shrink-0" />
@@ -184,33 +158,21 @@ export default function Dashboard() {
             )}
           </SectionCard>
 
-          
           <SectionCard title="Brand Pulse" subtitle="Santé globale de la marque">
-              <ChartGuard title="Brand Pulse">
-                <div className="flex justify-center" style={{ height: '200px' }}>
-                    <BrandPulseRadar data={safeBrandPulse} />
-                </div>
-              </ChartGuard>
+            <ChartGuard title="Brand Pulse">
+              <div className="flex justify-center" style={{ height: '200px' }}>
+                <BrandPulseRadar data={safeBrandPulse} />
+              </div>
+            </ChartGuard>
           </SectionCard>
 
           <SectionCard title="Agent Heartbeat" subtitle="État des agents IA">
             <div className="space-y-2">
-              {vm.agents.map((agent) => (
-                <div
-                  key={agent.id}
-                  className="flex items-center gap-3 p-2.5 rounded-lg bg-deep/60 border border-exec/8 hover:border-copper/15 transition"
-                >
-                  <div
-                    className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                      agent.status === 'active'
-                        ? 'bg-copper animate-pulse-copper'
-                        : agent.status === 'error'
-                        ? 'bg-red-400'
-                        : 'bg-subtle/40'
-                    }`}
-                  />
+              {vm.agents.map((agent: any) => (
+                <div key={agent.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-deep/60 border border-exec/8 hover:border-copper/15 transition">
+                  <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${agent.status === 'active' ? 'bg-copper animate-pulse-copper' : agent.status === 'error' ? 'bg-red-400' : 'bg-subtle/40'}`} />
                   <span className="text-xs font-semibold text-ivory flex-1">{agent.name}</span>
-                  <StatusBadge status={agent.status as any} />
+                  <StatusBadge status={agent.status} />
                 </div>
               ))}
             </div>
@@ -232,13 +194,11 @@ export default function Dashboard() {
               <FlowChart steps={safeContentFlow} />
             </ChartGuard>
           </SectionCard>
-
           <SectionCard title="Lead Funnel" subtitle="Pipeline commercial">
             <ChartGuard title="Lead Funnel">
               <FunnelChart steps={safeLeadFunnel} />
             </ChartGuard>
           </SectionCard>
-
           <SectionCard title="Project Health" subtitle="Santé des projets">
             <ChartGuard title="Project Health">
               <FlowChart steps={safeProjectHealth} />
@@ -247,17 +207,11 @@ export default function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          <SectionCard
-            title="Leads prioritaires"
-            headerRight={
-              <button
-                onClick={() => navigate('/leads')}
-                className="text-xs text-copper hover:text-copper-light transition flex items-center gap-1 font-semibold"
-              >
-                Voir tout <ArrowRight size={12} />
-              </button>
-            }
-          >
+          <SectionCard title="Leads prioritaires" headerRight={
+            <button onClick={() => navigate('/leads')} className="text-xs text-copper hover:text-copper-light transition flex items-center gap-1 font-semibold">
+              Voir tout <ArrowRight size={12} />
+            </button>
+          }>
             <div className="space-y-2">
               {vm.priorityLeads.map((l: any) => (
                 <div key={l.id} className="flex items-center justify-between p-2.5 rounded-lg bg-deep/60 border border-exec/8">
@@ -272,17 +226,11 @@ export default function Dashboard() {
             </div>
           </SectionCard>
 
-          <SectionCard
-            title="Projets actifs"
-            headerRight={
-              <button
-                onClick={() => navigate('/projects')}
-                className="text-xs text-copper hover:text-copper-light transition flex items-center gap-1 font-semibold"
-              >
-                Voir tout <ArrowRight size={12} />
-              </button>
-            }
-          >
+          <SectionCard title="Projets actifs" headerRight={
+            <button onClick={() => navigate('/projects')} className="text-xs text-copper hover:text-copper-light transition flex items-center gap-1 font-semibold">
+              Voir tout <ArrowRight size={12} />
+            </button>
+          }>
             <div className="space-y-2">
               {vm.activeOrWaitingProjects.map((p: any) => (
                 <div key={p.id} className="flex items-center justify-between p-2.5 rounded-lg bg-deep/60 border border-exec/8">
@@ -299,36 +247,21 @@ export default function Dashboard() {
           <SectionCard title="Clients & références">
             <div className="grid grid-cols-3 gap-2">
               {CLIENT_LOGOS.map((c) => (
-                <div
-                  key={c.name}
-                  className="flex items-center justify-center p-2.5 rounded-lg bg-deep/60 border border-exec/8 h-12 hover:border-copper/20 transition"
-                >
+                <div key={c.name} className="flex items-center justify-center p-2.5 rounded-lg bg-deep/60 border border-exec/8 h-12 hover:border-copper/20 transition">
                   <img src={c.url} alt={c.name} className="max-h-6 max-w-full object-contain opacity-60 hover:opacity-100 transition" />
                 </div>
               ))}
             </div>
           </SectionCard>
 
-          <SectionCard
-            title="Présence digitale"
-            headerRight={
-              <button
-                onClick={() => navigate('/media-center')}
-                className="text-xs text-copper hover:text-copper-light transition flex items-center gap-1 font-semibold"
-              >
-                Media Center <ArrowRight size={12} />
-              </button>
-            }
-          >
+          <SectionCard title="Présence digitale" headerRight={
+            <button onClick={() => navigate('/media-center')} className="text-xs text-copper hover:text-copper-light transition flex items-center gap-1 font-semibold">
+              Media Center <ArrowRight size={12} />
+            </button>
+          }>
             <div className="grid grid-cols-2 gap-1.5">
               {vm.digitalPresence.map((link: any) => (
-                <a
-                  key={link.name}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-deep/80 border border-transparent hover:border-copper/15 transition group"
-                >
+                <a key={link.name} href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-deep/80 border border-transparent hover:border-copper/15 transition group">
                   <span className="text-[11px] text-muted group-hover:text-ivory font-medium truncate">{link.name}</span>
                   <ExternalLink size={10} className="text-subtle/50 group-hover:text-copper transition shrink-0" />
                 </a>
