@@ -1,81 +1,126 @@
-import { useState } from 'react';
-import { Calendar, Target, AlertTriangle, CheckSquare, FileText } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Calendar, Target, AlertTriangle, CheckSquare, FileText, Loader2 } from 'lucide-react';
 import Topbar from '@/components/Topbar';
 import SectionCard from '@/components/SectionCard';
 import { useStore } from '@/lib/useStore';
+import { api } from '@/lib/api';
+import { useApiQuery } from '@/hooks/useApiQuery';
 
 export default function Weekly() {
-  const { state, addWeeklyPlan, updateWeeklyPlan, showToast } = useStore();
+  const { showToast } = useStore();
+  const { data: weeklyData, loading, setData: setWeeklyData } = useApiQuery(api.getWeekly, []);
+  const { data: runsData } = useApiQuery(api.getAgentRuns, []);
   const [editing, setEditing] = useState(false);
-  const plan = state.weeklyPlans[state.weeklyPlans.length - 1];
+  const [generating, setGenerating] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const plans = Array.isArray(weeklyData) ? weeklyData : [];
+  const plan = plans[plans.length - 1] || null;
+
   const [form, setForm] = useState({
-    weekLabel: plan?.weekLabel || '',
-    priority1: plan?.priority1 || '',
-    priority2: plan?.priority2 || '',
-    priority3: plan?.priority3 || '',
-    mainRisk: plan?.mainRisk || '',
-    decisions: plan?.decisions?.join('\n') || '',
-    notes: plan?.notes || '',
+    weekLabel: '',
+    priority1: '',
+    priority2: '',
+    priority3: '',
+    mainRisk: '',
+    decisions: '',
+    status: 'active',
   });
 
-  const handleSave = () => {
-    const data = {
-      weekLabel: form.weekLabel || `Semaine du ${new Date().toLocaleDateString('fr-FR')}`,
-      priority1: form.priority1,
-      priority2: form.priority2,
-      priority3: form.priority3,
-      mainRisk: form.mainRisk,
-      decisions: form.decisions.split('\n').filter(Boolean),
-      notes: form.notes,
-    };
+  useEffect(() => {
     if (plan) {
-      updateWeeklyPlan(plan.id, data);
-    } else {
-      addWeeklyPlan(data);
+      setForm({
+        weekLabel: plan.week_label || '',
+        priority1: plan.focus_primary || '',
+        priority2: plan.focus_secondary || '',
+        priority3: plan.focus_tertiary || '',
+        mainRisk: plan.main_risk || '',
+        decisions: plan.decision_note || '',
+        status: plan.status || 'active',
+      });
     }
-    setEditing(false);
-    showToast('Plan hebdomadaire sauvegardé');
+  }, [plan?.id]);
+
+  const generatePlan = async () => {
+    setGenerating(true);
+    try {
+      const result: any = await api.runChiefOfStaff({ mode: 'report' });
+      if (result?.result?.report) {
+        setForm({
+          weekLabel: `Semaine du ${new Date().toLocaleDateString('fr-FR')}`,
+          priority1: result.result.priority1 || '',
+          priority2: result.result.priority2 || '',
+          priority3: '',
+          mainRisk: '',
+          decisions: result.result.report || '',
+          status: 'active',
+        });
+        setEditing(true);
+        showToast('Plan généré par le Chief of Staff');
+      } else {
+        showToast('Rapport reçu mais format inattendu');
+      }
+      const fresh = await api.getWeekly();
+      setWeeklyData(fresh);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Erreur génération plan');
+    } finally {
+      setGenerating(false);
+    }
   };
 
-  const generatePlan = () => {
-    const hot = state.leads.filter(l => l.level === 'hot');
-    const review = state.scripts.filter(s => s.status === 'ready_review');
-    const waiting = state.projects.filter(p => p.status === 'project_waiting');
-    setForm({
-      weekLabel: `Semaine du ${new Date().toLocaleDateString('fr-FR')}`,
-      priority1: hot.length > 0 ? `Convertir ${hot[0].name}` : 'Qualifier les leads entrants',
-      priority2: review.length > 0 ? `Valider le script "${review[0].subject}"` : 'Produire 3 contenus éditoriaux',
-      priority3: waiting.length > 0 ? `Débloquer le projet ${waiting[0].client}` : 'Avancer sur les projets actifs',
-      mainRisk: waiting.length > 0 ? `Projet ${waiting[0].client} bloqué — ${waiting[0].blockers || 'à relancer'}` : 'Pas de risque majeur identifié',
-      decisions: 'Prioriser les leads chauds\nPublier sur LinkedIn et TikTok\nRelancer les projets en attente',
-      notes: 'Focus conversion et visibilité cette semaine.',
-    });
-    setEditing(true);
-    showToast('Plan généré — à personnaliser');
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const payload = {
+        week_label: form.weekLabel || `Semaine du ${new Date().toLocaleDateString('fr-FR')}`,
+        focus_primary: form.priority1,
+        focus_secondary: form.priority2,
+        focus_tertiary: form.priority3,
+        main_risk: form.mainRisk,
+        decision_note: form.decisions,
+        status: form.status || 'active',
+      };
+      if (plan?.id) {
+        await api.updateWeekly(plan.id, payload);
+      } else {
+        await api.createWeekly(payload);
+      }
+      setEditing(false);
+      showToast('Plan hebdomadaire sauvegardé');
+      const fresh = await api.getWeekly();
+      setWeeklyData(fresh);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Erreur sauvegarde');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  // Weekly compass
   const focusItems = [
-    { label: 'Contenu', value: state.contentIdeas.filter(i => i.status === 'idea_ready').length + state.scripts.filter(s => s.status === 'ready_review').length },
-    { label: 'Business', value: state.leads.filter(l => l.level === 'hot').length },
-    { label: 'Delivery', value: state.projects.filter(p => p.status === 'project_active').length },
-    { label: 'Agents', value: state.agents.filter(a => a.status === 'active').length },
+    { label: 'Contenu', value: 0 },
+    { label: 'Business', value: 0 },
+    { label: 'Delivery', value: 0 },
+    { label: 'Agents', value: Array.isArray(runsData) ? runsData.filter((r: any) => r.run_status === 'done').length : 0 },
   ];
 
   return (
     <div>
       <Topbar title="Revue Hebdomadaire" />
       <div className="p-6 space-y-5 animate-fade-in">
-
-        {/* Header actions */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-ivory">{plan?.weekLabel || 'Nouvelle semaine'}</h2>
+            <h2 className="text-xl font-bold text-ivory">{plan?.week_label || 'Nouvelle semaine'}</h2>
             <p className="text-sm text-subtle mt-0.5">Vue direction de semaine — priorités, risques, décisions</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={generatePlan} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-copper/15 border border-copper/30 text-copper-light text-sm font-semibold hover:bg-copper/25 transition">
-              <Target size={14} /> Générer le plan de semaine
+            <button
+              onClick={generatePlan}
+              disabled={generating}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-copper/15 border border-copper/30 text-copper-light text-sm font-semibold hover:bg-copper/25 transition disabled:opacity-50"
+            >
+              {generating ? <Loader2 size={14} className="animate-spin" /> : <Target size={14} />}
+              Générer le plan de semaine
             </button>
             {!editing && (
               <button onClick={() => setEditing(true)} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-carbon border border-exec/15 text-muted text-sm font-medium hover:border-copper/30 transition">
@@ -85,7 +130,6 @@ export default function Weekly() {
           </div>
         </div>
 
-        {/* Weekly Compass */}
         <div className="grid grid-cols-4 gap-3">
           {focusItems.map(item => (
             <div key={item.label} className="rounded-xl border border-exec/10 bg-carbon p-4 text-center">
@@ -96,7 +140,6 @@ export default function Weekly() {
         </div>
 
         {editing ? (
-          /* Edit mode */
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <SectionCard title="Priorités">
               <div className="space-y-3">
@@ -107,11 +150,7 @@ export default function Weekly() {
                 {[1,2,3].map(n => (
                   <div key={n}>
                     <label className="text-xs text-subtle font-semibold">Priorité #{n}</label>
-                    <input
-                      value={form[`priority${n}` as keyof typeof form]}
-                      onChange={e => setForm({...form, [`priority${n}`]: e.target.value})}
-                      className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30"
-                    />
+                    <input value={form[`priority${n}` as keyof typeof form]} onChange={e => setForm({...form, [`priority${n}`]: e.target.value})} className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30" />
                   </div>
                 ))}
                 <div>
@@ -123,52 +162,49 @@ export default function Weekly() {
             <SectionCard title="Décisions & Notes">
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs text-subtle font-semibold">Décisions (une par ligne)</label>
-                  <textarea value={form.decisions} onChange={e => setForm({...form, decisions: e.target.value})} rows={4} className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30 resize-none" />
-                </div>
-                <div>
-                  <label className="text-xs text-subtle font-semibold">Notes</label>
-                  <textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={3} className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30 resize-none" />
+                  <label className="text-xs text-subtle font-semibold">Décisions</label>
+                  <textarea value={form.decisions} onChange={e => setForm({...form, decisions: e.target.value})} rows={6} className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30 resize-none" />
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={handleSave} className="px-4 py-2 rounded-lg bg-copper text-dark text-sm font-bold hover:bg-copper-light transition">Sauvegarder</button>
+                  <button onClick={handleSave} disabled={saving} className="px-4 py-2 rounded-lg bg-copper text-dark text-sm font-bold hover:bg-copper-light transition disabled:opacity-50">
+                    {saving ? <Loader2 size={12} className="animate-spin inline mr-1" /> : null}
+                    Sauvegarder
+                  </button>
                   <button onClick={() => setEditing(false)} className="px-4 py-2 rounded-lg border border-exec/15 text-muted text-sm hover:border-copper/30 transition">Annuler</button>
                 </div>
               </div>
             </SectionCard>
           </div>
         ) : (
-          /* View mode */
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <SectionCard title="Priorités de la semaine">
               <div className="space-y-3">
                 {[
-                  { n: 1, val: plan?.priority1, accent: true },
-                  { n: 2, val: plan?.priority2 },
-                  { n: 3, val: plan?.priority3 },
+                  { n: 1, val: plan?.focus_primary, accent: true },
+                  { n: 2, val: plan?.focus_secondary },
+                  { n: 3, val: plan?.focus_tertiary },
                 ].map(p => (
                   <div key={p.n} className={`p-3 rounded-lg border ${p.accent ? 'bg-copper/8 border-copper/15' : 'bg-deep border-exec/10'}`}>
                     <p className={`text-xs font-semibold mb-1 ${p.accent ? 'text-copper' : 'text-subtle'}`}>Priorité #{p.n}</p>
                     <p className={`text-sm font-medium ${p.accent ? 'text-ivory' : 'text-muted'}`}>{p.val || '—'}</p>
                   </div>
                 ))}
-                {plan?.mainRisk && (
+                {plan?.main_risk && (
                   <div className="flex items-start gap-2 p-3 rounded-lg bg-red-950/20 border border-red-900/20">
                     <AlertTriangle size={14} className="text-red-400 mt-0.5 shrink-0" />
                     <div>
                       <p className="text-xs text-red-400 font-semibold">Risque principal</p>
-                      <p className="text-sm text-red-300 mt-0.5">{plan.mainRisk}</p>
+                      <p className="text-sm text-red-300 mt-0.5">{plan.main_risk}</p>
                     </div>
                   </div>
                 )}
               </div>
             </SectionCard>
-
             <div className="space-y-4">
               <SectionCard title="Décisions">
-                {plan?.decisions && plan.decisions.length > 0 ? (
+                {plan?.decision_note ? (
                   <div className="space-y-1.5">
-                    {plan.decisions.map((d, i) => (
+                    {plan.decision_note.split('\n').filter(Boolean).map((d: string, i: number) => (
                       <div key={i} className="flex items-start gap-2 p-2 rounded bg-deep/60">
                         <CheckSquare size={13} className="text-copper mt-0.5 shrink-0" />
                         <p className="text-sm text-muted">{d}</p>
@@ -178,23 +214,22 @@ export default function Weekly() {
                 ) : <p className="text-sm text-subtle">Aucune décision enregistrée</p>}
               </SectionCard>
               <SectionCard title="Notes">
-                <p className="text-sm text-muted whitespace-pre-wrap">{plan?.notes || 'Aucune note'}</p>
+                <p className="text-sm text-muted whitespace-pre-wrap">{plan?.decision_note || 'Aucune note'}</p>
               </SectionCard>
             </div>
           </div>
         )}
 
-        {/* Timeline */}
         <SectionCard title="Historique des semaines">
           <div className="space-y-2">
-            {state.weeklyPlans.map(wp => (
+            {plans.slice().reverse().map((wp: any) => (
               <div key={wp.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-deep/60 border border-exec/5">
                 <Calendar size={14} className="text-copper shrink-0" />
                 <div className="flex-1">
-                  <p className="text-sm font-semibold text-ivory">{wp.weekLabel}</p>
-                  <p className="text-xs text-subtle">P1: {wp.priority1}</p>
+                  <p className="text-sm font-semibold text-ivory">{wp.week_label}</p>
+                  <p className="text-xs text-subtle">P1: {wp.focus_primary}</p>
                 </div>
-                <span className="text-xs text-subtle">{new Date(wp.createdAt).toLocaleDateString('fr-FR')}</span>
+                <span className="text-xs text-subtle">{wp.updated_at ? new Date(wp.updated_at).toLocaleDateString('fr-FR') : '—'}</span>
               </div>
             ))}
           </div>
