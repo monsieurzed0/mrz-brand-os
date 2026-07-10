@@ -34,7 +34,6 @@ export type MediaLink = {
   sort_order?: number;
 };
 
-
 export type BrandMemorySection = {
   id: string;
   section_key: string;
@@ -302,6 +301,19 @@ export const api = {
   // Search
   search: (q: string) =>
     apiFetch<SearchResult[]>(`/api/search?q=${encodeURIComponent(q)}`),
+
+  // Weekly
+  getWeekly: () => apiFetch<any[]>('/api/weekly'),
+  createWeekly: (payload: any) =>
+    apiFetch<{ ok: boolean; id: string }>('/api/weekly', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateWeekly: (id: string, payload: any) =>
+    apiFetch(`/api/weekly/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
 
   // Agent runs
   getAgentRuns: () =>
