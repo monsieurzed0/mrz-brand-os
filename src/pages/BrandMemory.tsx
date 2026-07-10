@@ -6,36 +6,45 @@ import { useStore } from '@/lib/useStore';
 import { api } from '@/lib/api';
 import { ASSETS } from '@/lib/constants';
 
-interface MemorySection {
-  id: string;
-  section_key: string;
-  title: string;
-  content: string;
+function renderContent(text: string) {
+  if (!text) return '';
+  let html = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/^###\s+(.*)$/gm, '<strong>$1</strong>');
+  html = html.replace(/^-\s+(.*)$/gm, '• $1');
+  html = html.replace(/\n/g, '<br/>');
+  return html;
 }
 
 export default function BrandMemory() {
   const { showToast } = useStore();
-  const [sections, setSections] = useState<MemorySection[]>([]);
+  const [sections, setSections] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // Load from API on mount (silent, no layout shift)
   useEffect(() => {
     api.getBrandMemory()
       .then(data => {
         if (Array.isArray(data)) {
-          setSections(data.map((s: any) => ({
-            id: s.id,
-            section_key: s.section_key || s.sectionKey,
-            title: s.title,
-            content: s.content_md || s.content || '',
-          })));
+          setSections(
+            data.map((s: any) => ({
+              id: s.id,
+              section_key: s.section_key || s.sectionKey,
+              title: s.title,
+              content: s.content_md || s.content || '',
+            }))
+          );
         }
       })
       .catch(() => {
         showToast('Erreur chargement Brand Memory');
-      });
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const startEdit = (id: string, content: string) => {
@@ -44,8 +53,8 @@ export default function BrandMemory() {
   };
 
   const saveEdit = async (id: string) => {
-    const section = sections.find(s => s.id === id);
-    if (!section) return;
+    const section = sections.find((s: any) => s.id === id);
+    if (!section || !section.section_key) return;
 
     setSaving(true);
     try {
@@ -53,8 +62,8 @@ export default function BrandMemory() {
         title: section.title,
         content_md: editContent,
       });
-      setSections(prev =>
-        prev.map(s => (s.id === id ? { ...s, content: editContent } : s))
+      setSections((prev: any[]) =>
+        prev.map((s: any) => (s.id === id ? { ...s, content: editContent } : s))
       );
       setEditingId(null);
       showToast('Brand Memory sauvegardée');
@@ -101,41 +110,53 @@ export default function BrandMemory() {
 
         {/* Memory sections */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {sections.map(section => (
-            <SectionCard
-              key={section.id}
-              title={`${sectionIcons[section.title] || '◆'} ${section.title}`}
-              headerRight={
-                editingId === section.id ? (
-                  <button
-                    onClick={() => saveEdit(section.id)}
-                    disabled={saving}
-                    className="flex items-center gap-1 text-xs text-copper hover:text-copper-light transition disabled:opacity-50"
-                  >
-                    <Save size={12} /> Sauvegarder
-                  </button>
+          {loading ? (
+            <div className="lg:col-span-2 text-sm text-subtle">Chargement...</div>
+          ) : (
+            sections.map((section: any) => (
+              <SectionCard
+                key={section.id}
+                title={`${sectionIcons[section.title] || '◆'} ${section.title}`}
+                headerRight={
+                  editingId === section.id ? (
+                    <button
+                      onClick={() => saveEdit(section.id)}
+                      disabled={saving}
+                      className="flex items-center gap-1 text-xs text-copper hover:text-copper-light transition disabled:opacity-50"
+                    >
+                      {saving ? (
+                        <span className="inline-block w-3 h-3 border border-copper border-t-transparent rounded-full animate-spin mr-1" />
+                      ) : (
+                        <Save size={12} />
+                      )}
+                      Sauvegarder
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => startEdit(section.id, section.content)}
+                      className="flex items-center gap-1 text-xs text-subtle hover:text-copper transition"
+                    >
+                      <Edit3 size={12} /> Modifier
+                    </button>
+                  )
+                }
+              >
+                {editingId === section.id ? (
+                  <textarea
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    rows={6}
+                    className="w-full bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30 resize-none"
+                  />
                 ) : (
-                  <button
-                    onClick={() => startEdit(section.id, section.content)}
-                    className="flex items-center gap-1 text-xs text-subtle hover:text-copper transition"
-                  >
-                    <Edit3 size={12} /> Modifier
-                  </button>
-                )
-              }
-            >
-              {editingId === section.id ? (
-                <textarea
-                  value={editContent}
-                  onChange={e => setEditContent(e.target.value)}
-                  rows={6}
-                  className="w-full bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30 resize-none"
-                />
-              ) : (
-                <p className="text-sm text-muted whitespace-pre-wrap leading-relaxed">{section.content}</p>
-              )}
-            </SectionCard>
-          ))}
+                  <div
+                    className="text-sm text-muted leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: renderContent(section.content) }}
+                  />
+                )}
+              </SectionCard>
+            ))
+          )}
         </div>
       </div>
     </div>
