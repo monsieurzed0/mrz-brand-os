@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Crown, Radar, Lightbulb, PenTool, Palette, Target, Shield, Play, Bot, Loader2 } from 'lucide-react';
+import { Crown, Radar, Lightbulb, PenTool, Palette, Target, Shield, Play, Bot, Loader2, Filter, ChevronDown, X } from 'lucide-react';
 import Topbar from '@/components/Topbar';
 import SectionCard from '@/components/SectionCard';
 import StatusBadge from '@/components/StatusBadge';
@@ -8,13 +8,13 @@ import { api } from '@/lib/api';
 import { useApiQuery } from '@/hooks/useApiQuery';
 
 const AGENTS = [
-  { id: 'chief-of-staff', name: 'Chief of Staff', icon: 'Crown', mission: 'Orchestration générale, rapport hebdomadaire, alignement des priorités', status: 'active' as const },
-  { id: 'market-intel', name: 'Market Intel', icon: 'Radar', mission: 'Veille concurrentielle, analyse marché, détection d\'opportunités', status: 'active' as const },
-  { id: 'content-strategist', name: 'Content Strategist', icon: 'Lightbulb', mission: 'Génération d\'idées, analyse tendances, planification éditoriale', status: 'active' as const },
-  { id: 'scriptwriter', name: 'Scriptwriter', icon: 'PenTool', mission: 'Rédaction de scripts, hooks, captions, CTA', status: 'active' as const },
-  { id: 'prompt-engineer', name: 'Prompt Engineer', icon: 'Palette', mission: 'Création de prompts visuels, direction artistique IA', status: 'active' as const },
-  { id: 'sales-lead-ops', name: 'Sales & Lead Ops', icon: 'Target', mission: 'Qualification leads, scoring, préparation relances', status: 'active' as const },
-  { id: 'proof-delivery', name: 'Proof & Delivery', icon: 'Shield', mission: 'Suivi livraisons, collecte de preuves, documentation', status: 'active' as const },
+  { id: 'chief-of-staff', name: 'Chief of Staff', icon: 'Crown', mission: 'Orchestration générale, rapport hebdomadaire, alignement des priorités' },
+  { id: 'market-intel', name: 'Market Intel', icon: 'Radar', mission: 'Veille concurrentielle, analyse marché, détection d\'opportunités' },
+  { id: 'content-strategist', name: 'Content Strategist', icon: 'Lightbulb', mission: 'Génération d\'idées, analyse tendances, planification éditoriale' },
+  { id: 'scriptwriter', name: 'Scriptwriter', icon: 'PenTool', mission: 'Rédaction de scripts, hooks, captions, CTA' },
+  { id: 'prompt-engineer', name: 'Prompt Engineer', icon: 'Palette', mission: 'Création de prompts visuels, direction artistique IA' },
+  { id: 'sales-lead-ops', name: 'Sales & Lead Ops', icon: 'Target', mission: 'Qualification leads, scoring, préparation relances' },
+  { id: 'proof-delivery', name: 'Proof & Delivery', icon: 'Shield', mission: 'Suivi livraisons, collecte de preuves, documentation' },
 ];
 
 const ICON_MAP: Record<string, React.ReactNode> = {
@@ -43,7 +43,20 @@ export default function AgentConsole() {
   const { data: scriptsData } = useApiQuery(api.getScripts, []);
   const [launching, setLaunching] = useState<string | null>(null);
 
+  const [runFilterAgent, setRunFilterAgent] = useState('');
+  const [runFilterStatus, setRunFilterStatus] = useState('');
+  const [runLimit, setRunLimit] = useState(10);
+
   const agentRuns = Array.isArray(runsData) ? runsData : [];
+
+  const filteredRuns = agentRuns.filter((run: any) => {
+    if (runFilterAgent && run.agent_name !== runFilterAgent) return false;
+    if (runFilterStatus && run.run_status !== runFilterStatus) return false;
+    return true;
+  });
+
+  const displayedRuns = filteredRuns.slice(0, runLimit);
+  const hasMoreRuns = filteredRuns.length > runLimit;
 
   const launchAgent = async (agent: typeof AGENTS[0]) => {
     setLaunching(agent.id);
@@ -105,14 +118,14 @@ export default function AgentConsole() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {AGENTS.map(agent => (
-            <div key={agent.id} className={`rounded-xl border bg-carbon p-4 transition hover:border-copper/20 ${agent.status === 'active' ? 'border-copper/15' : 'border-exec/10'}`}>
+            <div key={agent.id} className="rounded-xl border bg-carbon p-4 transition hover:border-copper/20 border-copper/15">
               <div className="flex items-start justify-between mb-3">
-                <div className={`p-2.5 rounded-lg ${agent.status === 'active' ? 'bg-copper/15 text-copper' : 'bg-exec/10 text-exec'}`}>
+                <div className="p-2.5 rounded-lg bg-copper/15 text-copper">
                   {ICON_MAP[agent.icon] || <Bot size={20} />}
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <div className={`w-2 h-2 rounded-full ${agent.status === 'active' ? 'bg-copper animate-pulse-copper' : agent.status === 'error' ? 'bg-red-400' : 'bg-subtle/40'}`} />
-                  <StatusBadge status={agent.status} />
+                  <div className="w-2 h-2 rounded-full bg-copper animate-pulse-copper" />
+                  <StatusBadge status="active" />
                 </div>
               </div>
               <h3 className="text-sm font-bold text-ivory mb-1">{agent.name}</h3>
@@ -143,10 +156,48 @@ export default function AgentConsole() {
           </div>
         </SectionCard>
 
-        <SectionCard title="Historique des runs" headerRight={runsLoading ? <Loader2 size={14} className="animate-spin text-copper" /> : null}>
-          <div className="rounded-xl border border-exec/10 overflow-hidden">
+        <SectionCard
+          title="Historique des runs"
+          headerRight={runsLoading ? <Loader2 size={14} className="animate-spin text-copper" /> : null}
+        >
+          {/* Filtres historique */}
+          <div className="flex items-center gap-3 flex-wrap mb-4">
+            <Filter size={14} className="text-subtle" />
+            <select
+              value={runFilterAgent}
+              onChange={(e) => { setRunFilterAgent(e.target.value); setRunLimit(10); }}
+              className="bg-deep border border-exec/15 rounded-lg px-3 py-1.5 text-xs text-ivory focus:outline-none focus:border-copper/30"
+            >
+              <option value="">Tous les agents</option>
+              {AGENTS.map((a) => <option key={a.id} value={a.name}>{a.name}</option>)}
+            </select>
+            <select
+              value={runFilterStatus}
+              onChange={(e) => { setRunFilterStatus(e.target.value); setRunLimit(10); }}
+              className="bg-deep border border-exec/15 rounded-lg px-3 py-1.5 text-xs text-ivory focus:outline-none focus:border-copper/30"
+            >
+              <option value="">Tous les statuts</option>
+              <option value="done">Done</option>
+              <option value="done-fallback">Done-fallback</option>
+              <option value="failed">Failed</option>
+            </select>
+            {(runFilterAgent || runFilterStatus) && (
+              <button
+                onClick={() => { setRunFilterAgent(''); setRunFilterStatus(''); setRunLimit(10); }}
+                className="flex items-center gap-1 text-xs text-copper hover:text-copper-light underline"
+              >
+                <X size={10} /> Réinitialiser
+              </button>
+            )}
+            <span className="text-xs text-subtle ml-auto">
+              Affichés : {displayedRuns.length} / {filteredRuns.length}
+            </span>
+          </div>
+
+          {/* Tableau scrollable avec hauteur fixe */}
+          <div className="max-h-[420px] overflow-y-auto rounded-xl border border-exec/10">
             <table className="w-full text-sm">
-              <thead>
+              <thead className="sticky top-0 z-10">
                 <tr className="bg-deep border-b border-exec/10">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-subtle uppercase tracking-wider">Agent</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-subtle uppercase tracking-wider">Provider</th>
@@ -156,12 +207,12 @@ export default function AgentConsole() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-exec/5">
-                {agentRuns.length === 0 && !runsLoading ? (
+                {displayedRuns.length === 0 && !runsLoading ? (
                   <tr>
                     <td colSpan={5} className="px-4 py-6 text-center text-xs text-subtle">Aucun run enregistré</td>
                   </tr>
                 ) : (
-                  agentRuns.map((run: any) => (
+                  displayedRuns.map((run: any) => (
                     <tr key={run.id} className="hover:bg-carbon/40 transition">
                       <td className="px-4 py-3 text-ivory font-medium">{run.agent_name}</td>
                       <td className="px-4 py-3 text-muted text-xs">{run.provider || '—'}</td>
@@ -174,6 +225,19 @@ export default function AgentConsole() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {hasMoreRuns && (
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={() => setRunLimit((l) => l + 10)}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-carbon border border-exec/15 text-muted text-sm hover:border-copper/30 hover:text-ivory transition"
+              >
+                <ChevronDown size={14} />
+                Charger 10 de plus ({filteredRuns.length - runLimit} restants)
+              </button>
+            </div>
+          )}
         </SectionCard>
       </div>
     </div>
