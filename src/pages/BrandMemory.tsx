@@ -1,23 +1,39 @@
 import { useState } from 'react';
-import { BookOpen, Save, Edit3 } from 'lucide-react';
+import { BookOpen, Save, Edit3, Loader2 } from 'lucide-react';
 import Topbar from '@/components/Topbar';
 import SectionCard from '@/components/SectionCard';
 import { useStore } from '@/lib/useStore';
+import { api } from '@/lib/api';
+import { useApiQuery } from '@/hooks/useApiQuery';
 import { ASSETS } from '@/lib/constants';
 
 export default function BrandMemory() {
-  const { state, updateBrandMemory } = useStore();
+  const { showToast } = useStore();
+  const { data: memoryData, loading, setData: setMemoryData } = useApiQuery(api.getBrandMemory, []);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const sections = Array.isArray(memoryData) ? memoryData : [];
 
   const startEdit = (id: string, content: string) => {
     setEditingId(id);
     setEditContent(content);
   };
 
-  const saveEdit = (id: string) => {
-    updateBrandMemory(id, { content: editContent });
-    setEditingId(null);
+  const saveEdit = async (id: string, sectionKey: string, title: string) => {
+    setSaving(true);
+    try {
+      await api.updateBrandMemory(sectionKey, { title, content_md: editContent });
+      showToast('Brand Memory sauvegardée');
+      setEditingId(null);
+      const fresh = await api.getBrandMemory();
+      setMemoryData(fresh);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Erreur sauvegarde');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const sectionIcons: Record<string, string> = {
@@ -35,7 +51,6 @@ export default function BrandMemory() {
     <div>
       <Topbar title="Brand Memory" />
       <div className="p-6 space-y-5 animate-fade-in">
-        {/* Header with hero bg */}
         <div className="relative rounded-xl border border-exec/10 overflow-hidden">
           <div className="absolute inset-0 bg-cover bg-center opacity-5" style={{ backgroundImage: `url(${ASSETS.heroBg})` }} />
           <div className="relative p-6">
@@ -54,19 +69,25 @@ export default function BrandMemory() {
           </div>
         </div>
 
-        {/* Memory sections */}
+        {loading ? <div className="text-sm text-subtle">Chargement...</div> : null}
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {state.brandMemory.map(section => (
+          {sections.map((section: any) => (
             <SectionCard
               key={section.id}
               title={`${sectionIcons[section.title] || '◆'} ${section.title}`}
               headerRight={
                 editingId === section.id ? (
-                  <button onClick={() => saveEdit(section.id)} className="flex items-center gap-1 text-xs text-copper hover:text-copper-light transition">
-                    <Save size={12} /> Sauvegarder
+                  <button 
+                    onClick={() => saveEdit(section.id, section.section_key, section.title)} 
+                    disabled={saving}
+                    className="flex items-center gap-1 text-xs text-copper hover:text-copper-light transition disabled:opacity-50"
+                  >
+                    {saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+                    Sauvegarder
                   </button>
                 ) : (
-                  <button onClick={() => startEdit(section.id, section.content)} className="flex items-center gap-1 text-xs text-subtle hover:text-copper transition">
+                  <button onClick={() => startEdit(section.id, section.content_md)} className="flex items-center gap-1 text-xs text-subtle hover:text-copper transition">
                     <Edit3 size={12} /> Modifier
                   </button>
                 )
@@ -80,7 +101,7 @@ export default function BrandMemory() {
                   className="w-full bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30 resize-none"
                 />
               ) : (
-                <p className="text-sm text-muted whitespace-pre-wrap leading-relaxed">{section.content}</p>
+                <p className="text-sm text-muted whitespace-pre-wrap leading-relaxed">{section.content_md}</p>
               )}
             </SectionCard>
           ))}
