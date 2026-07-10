@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Lightbulb, Plus, Sparkles, Grid3X3, List, Filter } from 'lucide-react';
+import { Lightbulb, Plus, Sparkles, Grid3X3, List, Filter, ChevronDown } from 'lucide-react';
 
 import Topbar from '@/components/Topbar';
 import SectionCard from '@/components/SectionCard';
@@ -79,6 +79,7 @@ export default function ContentLab() {
   const [filterStatus, setFilterStatus] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [displayLimit, setDisplayLimit] = useState(10);
 
   const [form, setForm] = useState<Partial<UiContentIdea>>({
     subject: '',
@@ -103,6 +104,9 @@ export default function ContentLab() {
     if (filterStatus && i.status !== filterStatus) return false;
     return true;
   });
+
+  const displayedIdeas = ideas.slice(0, displayLimit);
+  const hasMore = ideas.length > displayLimit;
 
   const resetForm = () => {
     setForm({
@@ -129,16 +133,13 @@ export default function ContentLab() {
 
       if (editId) {
         await api.updateContentIdea(editId, payload);
-
         setIdeasData((prev: any) =>
           (prev || []).map((item: any) => (item.id === editId ? { ...item, ...payload } : item))
         );
-
         showToast('Idée mise à jour');
         setEditId(null);
       } else {
         const result: any = await api.createContentIdea(payload);
-
         setIdeasData((prev: any) => [
           ...(prev || []),
           {
@@ -148,7 +149,6 @@ export default function ContentLab() {
             updated_at: new Date().toISOString(),
           },
         ]);
-
         showToast('Idée ajoutée');
       }
 
@@ -162,11 +162,9 @@ export default function ContentLab() {
   const generateIdeas = async () => {
     try {
       const result: any = await api.runContentStrategist({ count: 5 });
-
       if (result?.ideas && Array.isArray(result.ideas)) {
         setIdeasData((prev: any) => [...(prev || []), ...result.ideas]);
       }
-
       showToast(`${result?.count || 0} idées générées`);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Erreur génération idées');
@@ -194,6 +192,7 @@ export default function ContentLab() {
       <Topbar title="Content Lab" />
 
       <div className="p-6 space-y-5 animate-fade-in">
+        {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2">
             <Lightbulb size={20} className="text-copper" />
@@ -242,49 +241,59 @@ export default function ContentLab() {
         {loading ? <div className="text-sm text-subtle">Chargement des idées...</div> : null}
         {error ? <div className="text-sm text-red-400">Erreur : {error}</div> : null}
 
+        {/* Filtres */}
         <div className="flex items-center gap-3 flex-wrap">
           <Filter size={14} className="text-subtle" />
 
           <select
             value={filterProduct}
-            onChange={(e) => setFilterProduct(e.target.value)}
+            onChange={(e) => { setFilterProduct(e.target.value); setDisplayLimit(10); }}
             className="bg-deep border border-exec/15 rounded-lg px-3 py-1.5 text-sm text-ivory focus:outline-none focus:border-copper/30"
           >
             <option value="">Tous les produits</option>
             {PRODUCTS.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
+              <option key={p} value={p}>{p}</option>
             ))}
           </select>
 
           <select
             value={filterPlatform}
-            onChange={(e) => setFilterPlatform(e.target.value)}
+            onChange={(e) => { setFilterPlatform(e.target.value); setDisplayLimit(10); }}
             className="bg-deep border border-exec/15 rounded-lg px-3 py-1.5 text-sm text-ivory focus:outline-none focus:border-copper/30"
           >
             <option value="">Toutes les plateformes</option>
             {PLATFORMS.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
+              <option key={p} value={p}>{p}</option>
             ))}
           </select>
 
           <select
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
+            onChange={(e) => { setFilterStatus(e.target.value); setDisplayLimit(10); }}
             className="bg-deep border border-exec/15 rounded-lg px-3 py-1.5 text-sm text-ivory focus:outline-none focus:border-copper/30"
           >
             <option value="">Tous les statuts</option>
             {IDEA_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {STATUS_MAP[s]}
-              </option>
+              <option key={s} value={s}>{STATUS_MAP[s]}</option>
             ))}
           </select>
+
+          {(filterProduct || filterPlatform || filterStatus) && (
+            <button
+              onClick={() => { setFilterProduct(''); setFilterPlatform(''); setFilterStatus(''); setDisplayLimit(10); }}
+              className="text-xs text-copper hover:text-copper-light underline"
+            >
+              Réinitialiser
+            </button>
+          )}
+
+          <span className="text-xs text-subtle ml-auto">
+            Affichées : {displayedIdeas.length} / {ideas.length}
+            {ideas.length !== allIdeas.length && ` (filtrées sur ${allIdeas.length})`}
+          </span>
         </div>
 
+        {/* Form */}
         {showForm && (
           <SectionCard title={editId ? "Modifier l'idée" : 'Nouvelle idée'}>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -296,7 +305,6 @@ export default function ContentLab() {
                   className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30"
                 />
               </div>
-
               <div>
                 <label className="text-xs text-subtle font-semibold">Angle</label>
                 <input
@@ -305,7 +313,6 @@ export default function ContentLab() {
                   className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30"
                 />
               </div>
-
               <div>
                 <label className="text-xs text-subtle font-semibold">Cible</label>
                 <input
@@ -314,7 +321,6 @@ export default function ContentLab() {
                   className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30"
                 />
               </div>
-
               <div>
                 <label className="text-xs text-subtle font-semibold">Produit</label>
                 <select
@@ -322,14 +328,9 @@ export default function ContentLab() {
                   onChange={(e) => setForm({ ...form, product: e.target.value as Product })}
                   className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30"
                 >
-                  {PRODUCTS.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
+                  {PRODUCTS.map((p) => <option key={p} value={p}>{p}</option>)}
                 </select>
               </div>
-
               <div>
                 <label className="text-xs text-subtle font-semibold">Plateforme</label>
                 <select
@@ -337,14 +338,9 @@ export default function ContentLab() {
                   onChange={(e) => setForm({ ...form, platform: e.target.value as Platform })}
                   className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30"
                 >
-                  {PLATFORMS.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
+                  {PLATFORMS.map((p) => <option key={p} value={p}>{p}</option>)}
                 </select>
               </div>
-
               <div>
                 <label className="text-xs text-subtle font-semibold">Durée (s)</label>
                 <select
@@ -352,14 +348,9 @@ export default function ContentLab() {
                   onChange={(e) => setForm({ ...form, duration: Number(e.target.value) as Duration })}
                   className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30"
                 >
-                  {DURATIONS.map((d) => (
-                    <option key={d} value={d}>
-                      {d}s
-                    </option>
-                  ))}
+                  {DURATIONS.map((d) => <option key={d} value={d}>{d}s</option>)}
                 </select>
               </div>
-
               <div>
                 <label className="text-xs text-subtle font-semibold">CTA</label>
                 <input
@@ -368,7 +359,6 @@ export default function ContentLab() {
                   className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30"
                 />
               </div>
-
               <div>
                 <label className="text-xs text-subtle font-semibold">Source</label>
                 <input
@@ -377,7 +367,6 @@ export default function ContentLab() {
                   className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30"
                 />
               </div>
-
               <div>
                 <label className="text-xs text-subtle font-semibold">Statut</label>
                 <select
@@ -385,15 +374,10 @@ export default function ContentLab() {
                   onChange={(e) => setForm({ ...form, status: e.target.value as ContentIdeaStatus })}
                   className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30"
                 >
-                  {IDEA_STATUSES.map((s) => (
-                    <option key={s} value={s}>
-                      {STATUS_MAP[s]}
-                    </option>
-                  ))}
+                  {IDEA_STATUSES.map((s) => <option key={s} value={s}>{STATUS_MAP[s]}</option>)}
                 </select>
               </div>
             </div>
-
             <div className="flex gap-2 mt-4">
               <button
                 onClick={handleSave}
@@ -411,11 +395,12 @@ export default function ContentLab() {
           </SectionCard>
         )}
 
-        {view === 'table' && (
-          <div className="rounded-xl border border-exec/10 overflow-hidden">
+        {/* Table / Kanban avec hauteur fixe et scroll interne */}
+        <div className="max-h-[520px] overflow-y-auto rounded-xl border border-exec/10">
+          {view === 'table' && (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead>
+                <thead className="sticky top-0 z-10">
                   <tr className="bg-deep border-b border-exec/10">
                     <th className="text-left px-4 py-3 text-xs font-semibold text-subtle uppercase tracking-wider">Sujet</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-subtle uppercase tracking-wider">Angle</th>
@@ -426,9 +411,8 @@ export default function ContentLab() {
                     <th className="text-left px-4 py-3 text-xs font-semibold text-subtle uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
-
                 <tbody className="divide-y divide-exec/5">
-                  {ideas.map((idea) => (
+                  {displayedIdeas.map((idea) => (
                     <tr key={idea.id} className="hover:bg-carbon/40 transition">
                       <td className="px-4 py-3 text-ivory font-medium max-w-xs truncate">{idea.subject}</td>
                       <td className="px-4 py-3 text-muted">{idea.angle}</td>
@@ -454,47 +438,68 @@ export default function ContentLab() {
                       </td>
                     </tr>
                   ))}
+                  {displayedIdeas.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-8 text-center text-xs text-subtle">
+                        Aucune idée correspondante
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
-          </div>
-        )}
+          )}
 
-        {view === 'kanban' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {IDEA_STATUSES.map((status) => (
-              <div key={status} className="rounded-xl border border-exec/10 bg-carbon">
-                <div className="px-4 py-3 border-b border-exec/10 flex items-center justify-between">
-                  <span className="text-xs font-bold text-ivory uppercase tracking-wider">
-                    {STATUS_MAP[status]}
-                  </span>
-                  <span className="text-xs text-subtle bg-deep px-2 py-0.5 rounded-full">
-                    {ideas.filter((i) => i.status === status).length}
-                  </span>
-                </div>
-
-                <div className="p-3 space-y-2 min-h-[100px]">
-                  {ideas
-                    .filter((i) => i.status === status)
-                    .map((idea) => (
-                      <div
-                        key={idea.id}
-                        onClick={() => editIdea(idea)}
-                        className="p-3 rounded-lg bg-deep border border-exec/5 hover:border-copper/20 cursor-pointer transition"
-                      >
-                        <p className="text-sm font-semibold text-ivory line-clamp-2">{idea.subject}</p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <span className="text-[10px] text-subtle bg-dark px-1.5 py-0.5 rounded">{idea.product}</span>
-                          <span className="text-[10px] text-subtle bg-dark px-1.5 py-0.5 rounded">{idea.platform}</span>
+          {view === 'kanban' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4">
+              {IDEA_STATUSES.map((status) => (
+                <div key={status} className="rounded-xl border border-exec/10 bg-carbon">
+                  <div className="px-4 py-3 border-b border-exec/10 flex items-center justify-between">
+                    <span className="text-xs font-bold text-ivory uppercase tracking-wider">
+                      {STATUS_MAP[status]}
+                    </span>
+                    <span className="text-xs text-subtle bg-deep px-2 py-0.5 rounded-full">
+                      {ideas.filter((i) => i.status === status).length}
+                    </span>
+                  </div>
+                  <div className="p-3 space-y-2 min-h-[100px]">
+                    {ideas
+                      .filter((i) => i.status === status)
+                      .slice(0, Math.ceil(displayLimit / 4))
+                      .map((idea) => (
+                        <div
+                          key={idea.id}
+                          onClick={() => editIdea(idea)}
+                          className="p-3 rounded-lg bg-deep border border-exec/5 hover:border-copper/20 cursor-pointer transition"
+                        >
+                          <p className="text-sm font-semibold text-ivory line-clamp-2">{idea.subject}</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className="text-[10px] text-subtle bg-dark px-1.5 py-0.5 rounded">{idea.product}</span>
+                            <span className="text-[10px] text-subtle bg-dark px-1.5 py-0.5 rounded">{idea.platform}</span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Pagination */}
+        {hasMore && (
+          <div className="flex justify-center">
+            <button
+              onClick={() => setDisplayLimit((l) => l + 10)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-carbon border border-exec/15 text-muted text-sm hover:border-copper/30 hover:text-ivory transition"
+            >
+              <ChevronDown size={14} />
+              Charger 10 de plus ({ideas.length - displayLimit} restants)
+            </button>
           </div>
         )}
 
+        {/* Stats */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <SectionCard title="Distribution par produit">
             <div className="space-y-2">
