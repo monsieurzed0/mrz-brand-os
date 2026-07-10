@@ -8,14 +8,25 @@ import { ASSETS } from '@/lib/constants';
 
 function renderContent(text: string) {
   if (!text) return '';
-  let html = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+
+  // 1. Normaliser les \n littéraux (backslash + n) en vrais sauts de ligne
+  let html = text.replace(/\\n/g, '\n');
+
+  // 2. Échapper le HTML pour la sécurité
+  html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  // 3. Markdown bold
   html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+  // 4. Titres markdown ### (multiligne)
   html = html.replace(/^###\s+(.*)$/gm, '<strong>$1</strong>');
+
+  // 5. Listes markdown
   html = html.replace(/^-\s+(.*)$/gm, '• $1');
+
+  // 6. Vrais sauts de ligne → <br/>
   html = html.replace(/\n/g, '<br/>');
+
   return html;
 }
 
@@ -49,7 +60,8 @@ export default function BrandMemory() {
 
   const startEdit = (id: string, content: string) => {
     setEditingId(id);
-    setEditContent(content);
+    // Normaliser \n littéraux pour l'éditeur (textarea affiche les newlines réels)
+    setEditContent(content.replace(/\\n/g, '\n'));
   };
 
   const saveEdit = async (id: string) => {
