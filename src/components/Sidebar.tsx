@@ -1,37 +1,48 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Calendar, Lightbulb, FileText, Zap, Palette, Users, Briefcase, Shield, Bot, BookOpen, Globe, RotateCcw } from 'lucide-react';
+import { LayoutDashboard, Calendar, Lightbulb, FileText, Zap, Palette, Users, Briefcase, Shield, Bot, BookOpen, Globe, RotateCcw, FileBarChart } from 'lucide-react';
 import { ASSETS } from '@/lib/constants';
 import { useStore } from '@/lib/useStore';
 
 const navItems = [
-  { label: 'Direction', items: [
-    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/weekly', icon: Calendar, label: 'Revue Hebdo' },
-  ]},
-  { label: 'Contenu', items: [
-    { to: '/content', icon: Lightbulb, label: 'Content Lab' },
-    { to: '/scripts', icon: FileText, label: 'Script Room' },
-    { to: '/content-engine', icon: Zap, label: 'Content Engine' },
-    { to: '/visual-lab', icon: Palette, label: 'Visual Lab' },
-  ]},
-  { label: 'Business', items: [
-    { to: '/leads', icon: Users, label: 'Lead Desk' },
-    { to: '/projects', icon: Briefcase, label: 'Projets' },
-    { to: '/proof-bank', icon: Shield, label: 'Proof Bank' },
-  ]},
-  { label: 'Système', items: [
-    { to: '/agents', icon: Bot, label: 'Agents' },
-    { to: '/brand-memory', icon: BookOpen, label: 'Brand Memory' },
-    { to: '/media-center', icon: Globe, label: 'Media Center' },
-  ]},
+  {
+    label: 'Direction',
+    items: [
+      { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+      { to: '/weekly', icon: Calendar, label: 'Revue Hebdo' },
+    ],
+  },
+  {
+    label: 'Contenu',
+    items: [
+      { to: '/content', icon: Lightbulb, label: 'Content Lab' },
+      { to: '/scripts', icon: FileText, label: 'Script Room' },
+      { to: '/content-engine', icon: Zap, label: 'Content Engine' },
+      { to: '/visual-lab', icon: Palette, label: 'Visual Lab' },
+    ],
+  },
+  {
+    label: 'Business',
+    items: [
+      { to: '/leads', icon: Users, label: 'Lead Desk' },
+      { to: '/projects', icon: Briefcase, label: 'Projets' },
+      { to: '/proof-bank', icon: Shield, label: 'Proof Bank' },
+      { to: '/finance', icon: FileBarChart, label: 'Finance' },
+    ],
+  },
+  {
+    label: 'Système',
+    items: [
+      { to: '/agents', icon: Bot, label: 'Agents' },
+      { to: '/brand-memory', icon: BookOpen, label: 'Brand Memory' },
+      { to: '/media-center', icon: Globe, label: 'Media Center' },
+    ],
+  },
 ];
 
 export default function Sidebar() {
   const location = useLocation();
   const { resetStore, state } = useStore();
-  
-  // Count unread notifications
-  const unreadCount = state.notifications.filter(n => n.status === 'unread').length;
+  const unreadCount = state.notifications.filter((n: any) => n.status === 'unread').length;
 
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-60 bg-deep border-r border-exec/10 flex flex-col z-40">
@@ -48,13 +59,13 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-4 px-3">
-        {navItems.map(section => (
+        {navItems.map((section) => (
           <div key={section.label} className="mb-5">
             <p className="px-3 mb-2 text-[9px] font-bold text-subtle/50 uppercase tracking-[0.2em]">
               {section.label}
             </p>
-            {section.items.map(item => {
-              const isActive = location.pathname === item.to;
+            {section.items.map((item) => {
+              const isActive = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to + '/')) || location.pathname === item.to;
               return (
                 <NavLink
                   key={item.to}
@@ -90,7 +101,7 @@ export default function Sidebar() {
         </button>
         <div className="flex items-center justify-between mt-3 px-3">
           <p className="text-[9px] text-subtle/40 font-medium">v2.0</p>
-          <p className="text-[9px] text-subtle/40 font-medium">Mock-first</p>
+          <p className="text-[9px] text-subtle/40 font-medium">Live</p>
         </div>
       </div>
     </aside>
