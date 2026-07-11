@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import {
   Crown, Radar, Lightbulb, PenTool, Palette, Target, Shield,
   Play, Bot, Loader2, Filter, ChevronDown, X, Zap, CalendarDays, Radio
@@ -12,7 +12,7 @@ import { api } from '@/lib/api';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { AGENTS } from '@/lib/agentConstants';
 
-const ICON_MAP: Record<string, React.ReactNode> = {
+const ICON_MAP: Record<string, ReactNode> = {
   Crown: <Crown size={20} />,
   Radar: <Radar size={20} />,
   Lightbulb: <Lightbulb size={20} />,
@@ -32,10 +32,6 @@ const relations = [
   { from: 'Market Intel', to: 'Sales & Lead Ops', label: 'informe' },
 ];
 
-/* ------------------------------------------------------------------ */
-/*  Semaine type — scénario de test                                    */
-/* ------------------------------------------------------------------ */
-
 const WEEK_SCENARIO = [
   { day: 'Lundi', time: '09:00', agentId: 'chief-of-staff', label: 'Rapport hebdomadaire' },
   { day: 'Lundi', time: '09:30', agentId: 'market-intel', label: 'Veille marché' },
@@ -45,10 +41,6 @@ const WEEK_SCENARIO = [
   { day: 'Mercredi', time: '11:00', agentId: 'sales-lead-ops', label: 'Qualification leads' },
   { day: 'Jeudi', time: '09:00', agentId: 'proof-delivery', label: 'Collecte preuves' },
 ];
-
-/* ------------------------------------------------------------------ */
-/*  Helpers réseau                                                    */
-/* ------------------------------------------------------------------ */
 
 function uid() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -81,12 +73,10 @@ export default function AgentConsole() {
   const displayedRuns = filteredRuns.slice(0, runLimit);
   const hasMoreRuns = filteredRuns.length > runLimit;
 
-  /* -------- push network event -------- */
   const emit = (event: Omit<NetworkEvent, 'id' | 'timestamp'>) => {
     setNetworkEvents(prev => [...prev.slice(-30), { ...event, id: uid(), timestamp: Date.now() }]);
   };
 
-  /* -------- launch a single agent -------- */
   const launchAgent = async (agent: typeof AGENTS[number]) => {
     setLaunching(agent.id);
     setActiveAgentIds(prev => [...prev, agent.id]);
@@ -132,7 +122,6 @@ export default function AgentConsole() {
           return null;
       }
 
-      /* --- backend flow simulation --- */
       const provider = result?.provider || 'fallback';
       const fallback = result?.fallback || result?.mode === 'fallback';
 
@@ -175,7 +164,6 @@ export default function AgentConsole() {
     }
   };
 
-  /* -------- week simulation -------- */
   const runWeekSimulation = async () => {
     if (simulating) return;
     setSimulating(true);
@@ -188,7 +176,6 @@ export default function AgentConsole() {
       if (!agent) continue;
 
       setSimLog(prev => prev.map((l, idx) => idx === i ? { ...l, status: 'running' } : l));
-
       emit({ type: 'log', label: `▶ ${step.day} ${step.time} — ${agent.name} : ${step.label}` });
 
       try {
@@ -198,7 +185,6 @@ export default function AgentConsole() {
         setSimLog(prev => prev.map((l, idx) => idx === i ? { ...l, status: 'error' } : l));
       }
 
-      /* Respiration entre agents */
       if (i < WEEK_SCENARIO.length - 1) {
         await new Promise(r => setTimeout(r, 2000));
       }
@@ -208,7 +194,6 @@ export default function AgentConsole() {
     showToast('Simulation semaine terminée');
   };
 
-  /* -------- agent card status -------- */
   const now = Date.now();
   const FIVE_MIN = 5 * 60 * 1000;
   const cardStatus = useMemo(() => {
@@ -216,8 +201,8 @@ export default function AgentConsole() {
     AGENTS.forEach(agent => {
       if (activeAgentIds.includes(agent.id)) { map[agent.id] = 'running'; return; }
       const lastRun = agentRuns
-        .filter(r => r.agent_name === agent.name)
-        .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())[0];
+        .filter((r: any) => r.agent_name === agent.name)
+        .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())[0];
       if (lastRun && lastRun.created_at) {
         const t = new Date(lastRun.created_at).getTime();
         if (!Number.isNaN(t) && (now - t) < FIVE_MIN) { map[agent.id] = 'alive'; return; }
@@ -232,7 +217,6 @@ export default function AgentConsole() {
       <Topbar title="Agent Console" agentRuns={agentRuns} activeAgentIds={activeAgentIds} />
 
       <div className="p-5 space-y-5 overflow-y-auto flex-1">
-        {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2">
             <Bot size={20} className="text-copper" />
@@ -249,7 +233,6 @@ export default function AgentConsole() {
           </button>
         </div>
 
-        {/* Simulation log */}
         {simLog.length > 0 && (
           <SectionCard title="Journal de simulation" subtitle="Scénario 7 jours — exécution séquentielle">
             <div className="flex gap-2 overflow-x-auto pb-1">
@@ -274,10 +257,8 @@ export default function AgentConsole() {
           </SectionCard>
         )}
 
-        {/* Live network map */}
         <AgentNetwork events={networkEvents} activeAgentIds={activeAgentIds} />
 
-        {/* Agent cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {AGENTS.map(agent => {
             const status = cardStatus[agent.id];
@@ -325,7 +306,6 @@ export default function AgentConsole() {
           })}
         </div>
 
-        {/* Relations */}
         <SectionCard title="Relations entre agents" subtitle="Flux d'information et de coordination">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
             {relations.map((r, i) => (
@@ -338,12 +318,10 @@ export default function AgentConsole() {
           </div>
         </SectionCard>
 
-        {/* History */}
         <SectionCard
           title="Historique des runs"
           headerRight={runsLoading ? <Loader2 size={14} className="animate-spin text-copper" /> : null}
         >
-          {/* Filters */}
           <div className="flex items-center gap-3 flex-wrap mb-4">
             <Filter size={14} className="text-subtle" />
             <select
