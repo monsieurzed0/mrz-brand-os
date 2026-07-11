@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export function useApiQuery<T>(queryFn: () => Promise<T>, deps: unknown[] = []) {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Sécurité runtime : si une page passe `{}` au lieu de `[]`,
+  // on évite le crash React qui provoque l'écran noir.
+  const safeDeps = useMemo(() => (Array.isArray(deps) ? deps : []), [deps]);
 
   const refetch = useCallback(async () => {
     try {
@@ -41,7 +45,7 @@ export function useApiQuery<T>(queryFn: () => Promise<T>, deps: unknown[] = []) 
     return () => {
       cancelled = true;
     };
-  }, [queryFn, ...deps]);
+  }, [queryFn, ...safeDeps]);
 
   return { data, loading, error, setData, refetch };
 }
