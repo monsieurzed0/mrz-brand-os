@@ -1,19 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Bell, Activity, Globe } from 'lucide-react';
+import { Bell, Activity, Globe, Wifi } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
 import SystemClock from './SystemClock';
 import GlobalSearch from './GlobalSearch';
 import NotificationDrawer from './NotificationDrawer';
-
 import { api } from '@/lib/api';
 import { useApiQuery } from '@/hooks/useApiQuery';
+import { AGENTS } from '@/lib/agentConstants';
 
 interface Props {
   title: string;
+  agentRuns?: any[];
+  activeAgentIds?: string[];
 }
 
-export default function Topbar({ title }: Props) {
+export default function Topbar({ title, agentRuns: propAgentRuns, activeAgentIds: propActiveAgentIds }: Props) {
   const [notifOpen, setNotifOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -28,33 +29,48 @@ export default function Topbar({ title }: Props) {
   const { data: agentRunsData } = useApiQuery(api.getAgentRuns, []);
 
   const notifications = Array.isArray(notificationsData) ? notificationsData : [];
-  const agentRuns = Array.isArray(agentRunsData) ? agentRunsData : [];
+  const fetchedAgentRuns = Array.isArray(agentRunsData) ? agentRunsData : [];
+
+  /* Fallback : AgentConsole peut injecter ses propres données temps réel */
+  const agentRuns = propAgentRuns && propAgentRuns.length > 0 ? propAgentRuns : fetchedAgentRuns;
+  const activeAgentIds = propActiveAgentIds || [];
 
   const unreadCount = useMemo(() => {
     return notifications.filter((n: any) => n.status === 'unread').length;
   }, [notifications]);
 
-  const runningAgents = useMemo(() => {
-    return agentRuns.filter(
-      (run: any) => run.run_status === 'running' || run.run_status === 'done'
-    ).length;
-  }, [agentRuns]);
+  /* ------------------------------------------------------------------ */
+  /*  État vivant des 7 agents : Running / Alive (< 5 min) / Sleep      */
+  /* ------------------------------------------------------------------ */
+  const FIVE_MIN = 5 * 60 * 1000;
+  const now = Date.now();
 
-  const totalAgents = 7;
-  const systemHealthy = runningAgents >= 3;
+  const agentStatus = useMemo(() => {
+    return AGENTS.map(agent => {
+      if (activeAgentIds.includes(agent.id)) return 'running';
+      const lastRun = agentRuns
+        .filter((r: any) => r.agent_name === agent.name)
+        .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())[0];
+      if (lastRun && lastRun.created_at) {
+        const lastTime = new Date(lastRun.created_at).getTime();
+        if (!Number.isNaN(lastTime) && (now - lastTime) < FIVE_MIN) return 'alive';
+      }
+      return 'sleep';
+    });
+  }, [agentRuns, activeAgentIds, now]);
+
+  const aliveCount = agentStatus.filter(s => s === 'alive' || s === 'running').length;
+  const systemHealthy = aliveCount >= 3;
 
   useEffect(() => {
     function handleRefresh() {
       refetchNotifications();
     }
-
     window.addEventListener('mrz-refresh-notifications', handleRefresh);
     window.addEventListener('focus', handleRefresh);
-
     const intervalId = setInterval(() => {
       refetchNotifications();
     }, 30000);
-
     return () => {
       window.removeEventListener('mrz-refresh-notifications', handleRefresh);
       window.removeEventListener('focus', handleRefresh);
@@ -65,7 +81,6 @@ export default function Topbar({ title }: Props) {
   async function markOne(id: string) {
     try {
       await api.markNotificationRead(id);
-
       setNotificationsData((prev: any) =>
         (prev || []).map((item: any) =>
           item.id === id
@@ -73,7 +88,6 @@ export default function Topbar({ title }: Props) {
             : item
         )
       );
-
       window.dispatchEvent(new CustomEvent('mrz-refresh-notifications'));
     } catch (err) {
       console.error(err);
@@ -83,7 +97,6 @@ export default function Topbar({ title }: Props) {
   async function markAll() {
     try {
       await api.markAllNotificationsRead();
-
       setNotificationsData((prev: any) =>
         (prev || []).map((item: any) => ({
           ...item,
@@ -91,7 +104,6 @@ export default function Topbar({ title }: Props) {
           read_at: new Date().toISOString(),
         }))
       );
-
       window.dispatchEvent(new CustomEvent('mrz-refresh-notifications'));
     } catch (err) {
       console.error(err);
@@ -114,25 +126,49 @@ export default function Topbar({ title }: Props) {
 
           {/* Right */}
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-carbon/60 border border-exec/10">
-              <div
-                className={`w-2 h-2 rounded-full ${
-                  systemHealthy ? 'bg-copper animate-pulse-copper' : 'bg-subtle'
-                }`}
-              />
+            {/* Worker OK */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-carbon/60 border border-exec/10">
+              <Wifi size={12} className="text-emerald-400" />
+              <span className="text-[10px] text-muted font-mono uppercase tracking-wider hidden sm:inline">Worker OK</span>
+            </div>
+
+            {/* 7 pastilles agents */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-carbon/60 border border-exec/10">
               <Activity
                 size={13}
                 className={systemHealthy ? 'text-copper' : 'text-subtle'}
               />
-              <span className="text-xs font-semibold text-muted">
-                {runningAgents}/{totalAgents} agents
+              <div className="flex items-center gap-1">
+                {AGENTS.map((agent, i) => {
+                  const status = agentStatus[i];
+                  return (
+                    <div key={agent.id} className="relative group">
+                      <div
+                        className={`
+                          w-2 h-2 rounded-full transition-all duration-500
+                          ${status === 'running'
+                            ? 'bg-copper animate-pulse shadow-[0_0_6px_rgba(212,163,115,0.6)]'
+                            : status === 'alive'
+                              ? 'bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.5)]'
+                              : 'bg-gray-700'
+                          }
+                        `}
+                      />
+                      {/* Tooltip */}
+                      <div className="absolute -top-7 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded bg-dark border border-exec/10 text-[10px] text-ivory opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none z-50">
+                        {agent.short} — {status === 'running' ? 'Exécution…' : status === 'alive' ? 'En ligne' : 'Sleep'}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <span className="text-xs font-semibold text-muted tabular-nums">
+                {aliveCount}/7
               </span>
             </div>
 
             <div className="w-px h-6 bg-exec/15" />
-
             <SystemClock />
-
             <div className="w-px h-6 bg-exec/15" />
 
             <button
