@@ -108,21 +108,21 @@ export default function AgentConsole() {
     emit({ type: 'pulse', node: agent.id });
     emit({ type: 'packet', from: agent.id, to: 'backend', label: 'POST /run (simulation)', status: 'running' });
 
-    await sleep(300);
+    await sleep(600);
     emit({ type: 'packet', from: 'backend', to: 'internet', label: `LLM ${agent.id === 'content-strategist' ? 'qwen' : 'groq'} (simulation)`, status: 'success' });
 
-    await sleep(400);
+    await sleep(800);
     emit({ type: 'packet', from: 'internet', to: 'backend', label: 'Tokens OK (simulation)', status: 'success' });
 
-    await sleep(300);
+    await sleep(600);
     emit({ type: 'packet', from: 'backend', to: 'd1', label: 'INSERT / UPDATE (simulation)', status: 'success' });
 
     if (agent.id === 'chief-of-staff') {
-      await sleep(200);
+      await sleep(400);
       emit({ type: 'packet', from: 'backend', to: 'kv', label: 'Invalidate cache (simulation)', status: 'success' });
     }
 
-    await sleep(200);
+    await sleep(400);
     emit({ type: 'packet', from: 'backend', to: agent.id, label: 'Done (simulation)', status: 'success' });
 
     showToast(`${agent.name} simulé — aucun token consommé, aucune écriture D1`);
@@ -266,7 +266,7 @@ export default function AgentConsole() {
 
       /* Respiration entre agents */
       if (i < WEEK_SCENARIO.length - 1) {
-        await sleep(2000);
+        await sleep(4000);
       }
     }
 
@@ -314,35 +314,39 @@ export default function AgentConsole() {
           </button>
         </div>
 
-        {/* Simulation log */}
-        {simLog.length > 0 && (
-          <SectionCard title={"Journal de simulation"} subtitle="Scénario 7 jours — exécution visuelle sans tokens ni D1">
-            <div className="flex items-center gap-2 mb-3 px-2 py-1 rounded bg-copper/10 border border-copper/20 text-[10px] text-copper-light uppercase tracking-wider font-bold w-fit">
-              <FlaskConical size={10} />
-              Mode simulation — aucune donnée persistante
-            </div>
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {simLog.map((l, i) => (
-                <div key={i} className={`
-                  flex items-center gap-2 px-3 py-2 rounded-lg border text-xs whitespace-nowrap min-w-[180px]
-                  ${l.status === 'pending' ? 'bg-deep border-exec/10 text-muted' : ''}
-                  ${l.status === 'running' ? 'bg-copper/10 border-copper/30 text-copper-light' : ''}
-                  ${l.status === 'done' ? 'bg-emerald-900/10 border-emerald-800/20 text-emerald-400' : ''}
-                  ${l.status === 'error' ? 'bg-red-900/10 border-red-800/20 text-red-400' : ''}
-                `}>
-                  <Radio size={10} className={
-                    l.status === 'running' ? 'animate-pulse text-copper' :
-                    l.status === 'done' ? 'text-emerald-400' :
-                    l.status === 'error' ? 'text-red-400' : 'text-subtle'
-                  } />
-                  <span className="font-mono">{l.step.day} {l.step.time}</span>
-                  <span className="font-semibold">{l.step.label}</span>
-                  {l.status === 'done' && <span className="text-[10px] text-subtle">(sim)</span>}
-                </div>
-              ))}
-            </div>
-          </SectionCard>
-        )}
+        {/* Simulation log — hauteur fixe, jamais conditionnel */}
+        <SectionCard title="Journal de simulation" subtitle="Scénario 7 jours — exécution visuelle sans tokens ni D1">
+          <div className="flex items-center gap-2 mb-3 px-2 py-1 rounded bg-copper/10 border border-copper/20 text-[10px] text-copper-light uppercase tracking-wider font-bold w-fit">
+            <FlaskConical size={10} />
+            Mode simulation — aucune donnée persistante
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1 min-h-[60px]">
+            {simLog.length === 0 && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-exec/10 bg-deep text-xs text-subtle whitespace-nowrap min-w-[180px]">
+                <Radio size={10} className="text-subtle" />
+                <span className="italic">Cliquez sur 🧪 Simuler pour lancer le scénario</span>
+              </div>
+            )}
+            {simLog.map((l, i) => (
+              <div key={i} className={`
+                flex items-center gap-2 px-3 py-2 rounded-lg border text-xs whitespace-nowrap min-w-[180px]
+                ${l.status === 'pending' ? 'bg-deep border-exec/10 text-muted' : ''}
+                ${l.status === 'running' ? 'bg-copper/10 border-copper/30 text-copper-light' : ''}
+                ${l.status === 'done' ? 'bg-emerald-900/10 border-emerald-800/20 text-emerald-400' : ''}
+                ${l.status === 'error' ? 'bg-red-900/10 border-red-800/20 text-red-400' : ''}
+              `}>
+                <Radio size={10} className={
+                  l.status === 'running' ? 'animate-pulse text-copper' :
+                  l.status === 'done' ? 'text-emerald-400' :
+                  l.status === 'error' ? 'text-red-400' : 'text-subtle'
+                } />
+                <span className="font-mono">{l.step.day} {l.step.time}</span>
+                <span className="font-semibold">{l.step.label}</span>
+                {l.status === 'done' && <span className="text-[10px] text-subtle">(sim)</span>}
+              </div>
+            ))}
+          </div>
+        </SectionCard>
 
         {/* Live network map */}
         <AgentNetwork events={networkEvents} activeAgentIds={activeAgentIds} />
