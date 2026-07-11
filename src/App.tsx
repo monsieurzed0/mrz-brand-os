@@ -23,6 +23,7 @@ import FinanceClients from '@/pages/FinanceClients';
 import FinanceExpenses from '@/pages/FinanceExpenses';
 
 
+
 function Layout() {
   return (
     <div className="flex min-h-screen bg-dark">
