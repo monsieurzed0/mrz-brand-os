@@ -33,7 +33,7 @@ function formatXAF(n: number) {
 
 export default function FinanceDashboard() {
   const { showToast } = useStore();
-  const { data: summary, loading: sumLoading } = useApiQuery(api.getFinanceSummary, {});
+  const { data: summary, loading: sumLoading } = useApiQuery(api.getFinanceSummary, []);
   const { data: aging } = useApiQuery(api.getAgingReport, []);
   const { data: invoices } = useApiQuery(api.getInvoices, []);
   const { data: quotes } = useApiQuery(api.getQuotes, []);
