@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Users, Plus, Target, Flame, Thermometer, Snowflake, Loader2 } from 'lucide-react';
+import { Users, Plus, Target, Flame, Thermometer, Snowflake, Loader2, Copy } from 'lucide-react';
 import Topbar from '@/components/Topbar';
 import SectionCard from '@/components/SectionCard';
 import StatusBadge from '@/components/StatusBadge';
@@ -28,6 +28,8 @@ type UiLead = {
   level: 'cold' | 'warm' | 'hot';
   nextAction: string;
   followupDraft: string;
+  relanceEmail: string;
+  relanceWhatsapp: string;
   status: LeadStatus;
 };
 
@@ -59,6 +61,8 @@ export default function LeadDesk() {
     level: 'cold',
     nextAction: '',
     followupDraft: '',
+    relanceEmail: '',
+    relanceWhatsapp: '',
     status: 'lead_new',
   });
 
@@ -72,6 +76,8 @@ export default function LeadDesk() {
       level: normalizeLevel(l.niveau),
       nextAction: l.next_action || '',
       followupDraft: l.relance_brouillon || '',
+      relanceEmail: l.relance_email || l.relance_brouillon || '',
+      relanceWhatsapp: l.relance_whatsapp || l.relance_brouillon || '',
       status: (l.status || 'lead_new') as LeadStatus,
     }));
   }, [leadsData]);
@@ -100,11 +106,13 @@ export default function LeadDesk() {
         niveau: levelToDb(form.level || 'cold'),
         next_action: form.nextAction || '',
         relance_brouillon: form.followupDraft || '',
+        relance_email: form.relanceEmail || form.followupDraft || '',
+        relance_whatsapp: form.relanceWhatsapp || form.followupDraft || '',
         status: form.status || 'lead_new',
       };
       const result: any = await api.createLead(payload);
       setLeadsData((prev: any) => [...(prev || []), { id: result.id, ...payload }]);
-      setForm({ name: '', source: '', need: '', level: 'cold', nextAction: '', followupDraft: '', status: 'lead_new' });
+      setForm({ name: '', source: '', need: '', level: 'cold', nextAction: '', followupDraft: '', relanceEmail: '', relanceWhatsapp: '', status: 'lead_new' });
       setShowForm(false);
       showToast('Lead ajouté');
     } catch (err) {
@@ -147,6 +155,11 @@ export default function LeadDesk() {
     } finally {
       setProcessing(null);
     }
+  };
+
+  const copy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    showToast('Copié');
   };
 
   const heatIcon = (level: string) => {
@@ -201,7 +214,16 @@ export default function LeadDesk() {
                   {LEAD_STATUSES.map((s) => <option key={s} value={s}>{STATUS_MAP[s]}</option>)}
                 </select>
               </div>
-              <div className="lg:col-span-3"><label className="text-xs text-subtle font-semibold">Brouillon de relance</label><textarea value={form.followupDraft || ''} onChange={(e) => setForm({ ...form, followupDraft: e.target.value })} rows={2} className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30 resize-none" /></div>
+              <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-subtle font-semibold">Brouillon email</label>
+                  <textarea value={form.relanceEmail || ''} onChange={(e) => setForm({ ...form, relanceEmail: e.target.value, followupDraft: e.target.value })} rows={2} placeholder="Ton formel, structuré, avec objet implicite..." className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30 resize-none" />
+                </div>
+                <div>
+                  <label className="text-xs text-subtle font-semibold">Brouillon WhatsApp</label>
+                  <textarea value={form.relanceWhatsapp || ''} onChange={(e) => setForm({ ...form, relanceWhatsapp: e.target.value })} rows={2} placeholder="Court, direct, sans formule lourde..." className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30 resize-none" />
+                </div>
+              </div>
             </div>
             <div className="flex gap-2 mt-4">
               <button onClick={handleSave} className="px-4 py-2 rounded-lg bg-copper text-dark text-sm font-bold hover:bg-copper-light transition">Ajouter</button>
@@ -251,10 +273,22 @@ export default function LeadDesk() {
                     <div className="p-2 rounded bg-deep"><span className="text-subtle">Besoin:</span><p className="text-muted mt-0.5">{selected.need}</p></div>
                   </div>
                   <div className="p-2 rounded bg-deep text-xs"><span className="text-subtle">Prochaine action:</span><p className="text-muted mt-0.5">{selected.nextAction}</p></div>
-                  {selected.followupDraft ? (
+                  {selected.relanceEmail ? (
                     <div className="p-3 rounded-lg bg-copper/5 border border-copper/10">
-                      <p className="text-xs text-copper font-semibold mb-1">Brouillon de relance</p>
-                      <p className="text-xs text-muted whitespace-pre-wrap">{selected.followupDraft}</p>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs text-copper font-semibold">Brouillon email</p>
+                        <button onClick={() => copy(selected.relanceEmail)} className="text-[10px] text-muted hover:text-copper flex items-center gap-1"><Copy size={10} /> Copier</button>
+                      </div>
+                      <p className="text-xs text-muted whitespace-pre-wrap">{selected.relanceEmail}</p>
+                    </div>
+                  ) : null}
+                  {selected.relanceWhatsapp ? (
+                    <div className="p-3 rounded-lg bg-green-950/20 border border-green-800/20">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs text-green-400 font-semibold">Brouillon WhatsApp</p>
+                        <button onClick={() => copy(selected.relanceWhatsapp)} className="text-[10px] text-muted hover:text-green-400 flex items-center gap-1"><Copy size={10} /> Copier</button>
+                      </div>
+                      <p className="text-xs text-muted whitespace-pre-wrap">{selected.relanceWhatsapp}</p>
                     </div>
                   ) : null}
                   <div className="flex gap-2 flex-wrap">
