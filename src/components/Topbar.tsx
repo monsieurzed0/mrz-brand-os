@@ -49,7 +49,10 @@ export default function Topbar({ title, agentRuns: propAgentRuns, activeAgentIds
         .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())[0];
       if (lastRun && lastRun.created_at) {
         const lastTime = new Date(lastRun.created_at).getTime();
-        if (!Number.isNaN(lastTime) && (now - lastTime) < FIVE_MIN) return 'alive';
+        if (!Number.isNaN(lastTime) && (now - lastTime) < FIVE_MIN) {
+          if (lastRun.run_status === 'failed') return 'failed';
+          return 'alive';
+        }
       }
       return 'sleep';
     });
@@ -138,12 +141,14 @@ export default function Topbar({ title, agentRuns: propAgentRuns, activeAgentIds
                             ? 'bg-copper animate-pulse shadow-[0_0_6px_rgba(212,163,115,0.6)]'
                             : status === 'alive'
                               ? 'bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.5)]'
-                              : 'bg-gray-700'
+                              : status === 'failed'
+                                ? 'bg-red-500 shadow-[0_0_4px_rgba(239,68,68,0.5)]'
+                                : 'bg-gray-700'
                           }
                         `}
                       />
                       <div className="absolute -top-7 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded bg-dark border border-exec/10 text-[10px] text-ivory opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none z-50">
-                        {agent.short} — {status === 'running' ? 'Exécution…' : status === 'alive' ? 'En ligne' : 'Sleep'}
+                        {agent.short} — {status === 'running' ? 'Exécution…' : status === 'alive' ? 'En ligne' : status === 'failed' ? 'Échec' : 'Sleep'}
                       </div>
                     </div>
                   );
