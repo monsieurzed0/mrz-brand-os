@@ -242,6 +242,237 @@ export type ChiefOfStaffResult = AgentRunResult & {
   };
 };
 
+// ───────────────────────────────────────────────
+// FINANCE & ADMINISTRATION
+// ───────────────────────────────────────────────
+
+export type CompanySettings = {
+  id?: string;
+  business_name?: string;
+  legal_form?: string;
+  niu?: string;
+  rccm?: string;
+  tax_regime?: string;
+  tva_rate?: number;
+  tva_enabled?: number;
+  address?: string;
+  city?: string;
+  country?: string;
+  phone?: string;
+  email?: string;
+  bank_name?: string;
+  bank_account?: string;
+  bank_iban?: string;
+  currency_default?: string;
+  quote_validity_days?: number;
+  invoice_due_days?: number;
+  quote_prefix?: string;
+  invoice_prefix?: string;
+  next_invoice_number?: number;
+  next_quote_number?: number;
+};
+
+export type ServiceCatalogItem = {
+  id: string;
+  name: string;
+  description?: string;
+  category?: string;
+  unit_price: number;
+  currency?: string;
+  tva_rate?: number;
+  duration_estimate?: string;
+  product_brand?: string;
+  is_active?: number;
+  sort_order?: number;
+};
+
+export type ClientItem = {
+  id: string;
+  lead_id?: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  niu?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+  billing_contact?: string;
+  preferred_currency?: string;
+  notes?: string;
+  status?: string;
+  total_revenue?: number;
+  total_paid?: number;
+  total_due?: number;
+};
+
+export type QuoteLineItem = {
+  id: string;
+  quote_id: string;
+  service_id?: string;
+  description: string;
+  quantity?: number;
+  unit_price?: number;
+  tva_rate?: number;
+  discount_percent?: number;
+  line_total?: number;
+  sort_order?: number;
+};
+
+export type QuoteItem = {
+  id: string;
+  client_id: string;
+  project_id?: string;
+  lead_id?: string;
+  quote_number: string;
+  status?: string;
+  issue_date?: string;
+  expiry_date?: string;
+  currency?: string;
+  acompte_percent?: number;
+  acompte_invoice_id?: string;
+  solde_invoice_id?: string;
+  subtotal?: number;
+  tva_rate?: number;
+  tva_amount?: number;
+  total?: number;
+  terms?: string;
+  notes?: string;
+  internal_notes?: string;
+  accepted_at?: string;
+  converted_invoice_id?: string;
+};
+
+export type InvoiceLineItem = {
+  id: string;
+  invoice_id: string;
+  service_id?: string;
+  description: string;
+  quantity?: number;
+  unit_price?: number;
+  tva_rate?: number;
+  discount_percent?: number;
+  line_total?: number;
+  sort_order?: number;
+};
+
+export type InvoiceItem = {
+  id: string;
+  client_id: string;
+  quote_id?: string;
+  project_id?: string;
+  invoice_number: string;
+  invoice_type?: string;
+  parent_invoice_id?: string;
+  status?: string;
+  issue_date?: string;
+  due_date?: string;
+  paid_date?: string;
+  currency?: string;
+  subtotal?: number;
+  tva_rate?: number;
+  tva_amount?: number;
+  total?: number;
+  amount_paid?: number;
+  amount_due?: number;
+  terms?: string;
+  notes?: string;
+  internal_notes?: string;
+};
+
+export type PaymentItem = {
+  id: string;
+  invoice_id?: string;
+  client_id: string;
+  amount: number;
+  currency?: string;
+  exchange_rate?: number;
+  amount_xaf?: number;
+  payment_method?: string;
+  payment_method_detail?: string;
+  payment_date?: string;
+  reference?: string;
+  status?: string;
+  notes?: string;
+};
+
+export type ExpenseItem = {
+  id: string;
+  category: string;
+  description: string;
+  amount: number;
+  currency?: string;
+  exchange_rate?: number;
+  amount_xaf?: number;
+  expense_date?: string;
+  payment_method?: string;
+  vendor?: string;
+  receipt_url?: string;
+  is_recurring?: number;
+  recurrence_period?: string;
+  status?: string;
+};
+
+export type ExchangeRate = {
+  id: string;
+  from_currency: string;
+  to_currency: string;
+  rate: number;
+  rate_date?: string;
+  source?: string;
+};
+
+export type FinancialCategory = {
+  id: string;
+  code: string;
+  label: string;
+  type: string;
+  is_active?: number;
+};
+
+export type JournalEntry = {
+  id: string;
+  date: string;
+  reference_type?: string;
+  reference_id?: string;
+  debit_account: string;
+  credit_account: string;
+  amount: number;
+  description?: string;
+};
+
+export type FinanceSummary = {
+  revenue: { total: number; month: number; year: number };
+  outstanding: number;
+  overdue: number;
+  expenses: { total: number; month: number };
+  netMargin: number;
+  counts: { clients: number; activeProjects: number; quotes: number; invoices: number };
+};
+
+export type AgingBucket = { label: string; min: number; max: number; amount: number; count: number };
+
+export type BalanceSheet = {
+  actif: { clients: number; treasury: any[]; immobilisations: number; total: number };
+  passif: { capital: number; resultat: number; fournisseurs: number; total: number };
+  equilibrium: boolean;
+};
+
+export type IncomeStatement = {
+  produits: { prestations: number; total: number };
+  charges: any[];
+  totalCharges: number;
+  resultatNet: number;
+};
+
+export type TrialBalanceRow = {
+  code: string;
+  label: string;
+  type: string;
+  debit: number;
+  credit: number;
+  solde: number;
+};
+
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
@@ -536,4 +767,115 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload || {}),
     }),
+
+  // ───────────────────────────────────────────────
+  // FINANCE & ADMINISTRATION
+  // ───────────────────────────────────────────────
+
+  // Company settings
+  getCompanySettings: () => apiFetch<CompanySettings>('/api/company-settings'),
+  updateCompanySettings: (payload: Partial<CompanySettings>) =>
+    apiFetch('/api/company-settings', { method: 'PUT', body: JSON.stringify(payload) }),
+
+  // Services catalog
+  getServicesCatalog: () => apiFetch<ServiceCatalogItem[]>('/api/services-catalog'),
+  createServiceCatalog: (payload: Partial<ServiceCatalogItem>) =>
+    apiFetch<{ ok: boolean; id: string }>('/api/services-catalog', { method: 'POST', body: JSON.stringify(payload) }),
+  updateServiceCatalog: (id: string, payload: Partial<ServiceCatalogItem>) =>
+    apiFetch(`/api/services-catalog/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteServiceCatalog: (id: string) =>
+    apiFetch(`/api/services-catalog/${id}`, { method: 'DELETE' }),
+
+  // Clients
+  getClients: () => apiFetch<ClientItem[]>('/api/clients'),
+  createClient: (payload: Partial<ClientItem>) =>
+    apiFetch<{ ok: boolean; id: string }>('/api/clients', { method: 'POST', body: JSON.stringify(payload) }),
+  updateClient: (id: string, payload: Partial<ClientItem>) =>
+    apiFetch(`/api/clients/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteClient: (id: string) =>
+    apiFetch(`/api/clients/${id}`, { method: 'DELETE' }),
+  convertLeadToClient: (leadId: string) =>
+    apiFetch<{ ok: boolean; clientId: string; message?: string }>('/api/clients/convert-lead', {
+      method: 'POST',
+      body: JSON.stringify({ lead_id: leadId }),
+    }),
+
+  // Quotes
+  getQuotes: () => apiFetch<QuoteItem[]>('/api/quotes'),
+  createQuote: (payload: Partial<QuoteItem>) =>
+    apiFetch<{ ok: boolean; id: string }>('/api/quotes', { method: 'POST', body: JSON.stringify(payload) }),
+  updateQuote: (id: string, payload: Partial<QuoteItem>) =>
+    apiFetch(`/api/quotes/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteQuote: (id: string) =>
+    apiFetch(`/api/quotes/${id}`, { method: 'DELETE' }),
+  convertQuoteToInvoice: (id: string) =>
+    apiFetch('/api/quotes/' + id + '/convert', { method: 'POST', body: JSON.stringify({}) }),
+
+  // Quote items
+  getQuoteItems: (quoteId?: string) =>
+    apiFetch<QuoteLineItem[]>(quoteId ? `/api/quote-items?quote_id=${quoteId}` : '/api/quote-items'),
+  createQuoteItem: (payload: Partial<QuoteLineItem>) =>
+    apiFetch<{ ok: boolean; id: string }>('/api/quote-items', { method: 'POST', body: JSON.stringify(payload) }),
+  updateQuoteItem: (id: string, payload: Partial<QuoteLineItem>) =>
+    apiFetch(`/api/quote-items/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteQuoteItem: (id: string) =>
+    apiFetch(`/api/quote-items/${id}`, { method: 'DELETE' }),
+
+  // Invoices
+  getInvoices: () => apiFetch<InvoiceItem[]>('/api/invoices'),
+  createInvoice: (payload: Partial<InvoiceItem>) =>
+    apiFetch<{ ok: boolean; id: string }>('/api/invoices', { method: 'POST', body: JSON.stringify(payload) }),
+  updateInvoice: (id: string, payload: Partial<InvoiceItem>) =>
+    apiFetch(`/api/invoices/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteInvoice: (id: string) =>
+    apiFetch(`/api/invoices/${id}`, { method: 'DELETE' }),
+  recordPayment: (invoiceId: string, payload: { amount: number; currency?: string; payment_method?: string; payment_method_detail?: string; payment_date?: string; reference?: string; notes?: string }) =>
+    apiFetch('/api/invoices/' + invoiceId + '/payment', { method: 'POST', body: JSON.stringify({ ...payload, invoice_id: invoiceId }) }),
+
+  // Invoice items
+  getInvoiceItems: (invoiceId?: string) =>
+    apiFetch<InvoiceLineItem[]>(invoiceId ? `/api/invoice-items?invoice_id=${invoiceId}` : '/api/invoice-items'),
+  createInvoiceItem: (payload: Partial<InvoiceLineItem>) =>
+    apiFetch<{ ok: boolean; id: string }>('/api/invoice-items', { method: 'POST', body: JSON.stringify(payload) }),
+  updateInvoiceItem: (id: string, payload: Partial<InvoiceLineItem>) =>
+    apiFetch(`/api/invoice-items/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteInvoiceItem: (id: string) =>
+    apiFetch(`/api/invoice-items/${id}`, { method: 'DELETE' }),
+
+  // Payments
+  getPayments: () => apiFetch<PaymentItem[]>('/api/payments'),
+  createPayment: (payload: Partial<PaymentItem>) =>
+    apiFetch<{ ok: boolean; id: string }>('/api/payments', { method: 'POST', body: JSON.stringify(payload) }),
+
+  // Expenses
+  getExpenses: () => apiFetch<ExpenseItem[]>('/api/expenses'),
+  createExpense: (payload: Partial<ExpenseItem>) =>
+    apiFetch<{ ok: boolean; id: string }>('/api/expenses', { method: 'POST', body: JSON.stringify(payload) }),
+  updateExpense: (id: string, payload: Partial<ExpenseItem>) =>
+    apiFetch(`/api/expenses/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteExpense: (id: string) =>
+    apiFetch(`/api/expenses/${id}`, { method: 'DELETE' }),
+
+  // Exchange rates
+  getExchangeRates: () => apiFetch<ExchangeRate[]>('/api/exchange-rates'),
+  createExchangeRate: (payload: Partial<ExchangeRate>) =>
+    apiFetch<{ ok: boolean; id: string }>('/api/exchange-rates', { method: 'POST', body: JSON.stringify(payload) }),
+  updateExchangeRate: (id: string, payload: Partial<ExchangeRate>) =>
+    apiFetch(`/api/exchange-rates/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteExchangeRate: (id: string) =>
+    apiFetch(`/api/exchange-rates/${id}`, { method: 'DELETE' }),
+
+  // Financial categories
+  getFinancialCategories: () => apiFetch<FinancialCategory[]>('/api/financial-categories'),
+
+  // Journal
+  getJournalEntries: () => apiFetch<JournalEntry[]>('/api/journal-entries'),
+
+  // Financial reports
+  getFinanceSummary: () => apiFetch<FinanceSummary>('/api/finance/summary'),
+  getAgingReport: () => apiFetch<AgingBucket[]>('/api/finance/aging'),
+  getBalanceSheet: () => apiFetch<BalanceSheet>('/api/finance/balance-sheet'),
+  getIncomeStatement: () => apiFetch<IncomeStatement>('/api/finance/income-statement'),
+  getGeneralLedger: () => apiFetch<JournalEntry[]>('/api/finance/general-ledger'),
+  getTrialBalance: () => apiFetch<TrialBalanceRow[]>('/api/finance/trial-balance'),
 };
