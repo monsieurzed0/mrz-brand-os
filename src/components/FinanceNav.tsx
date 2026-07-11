@@ -1,3 +1,4 @@
+import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, FileText, Receipt, Users, BarChart3, Settings, Wallet } from 'lucide-react';
 
 const LINKS = [
@@ -10,26 +11,29 @@ const LINKS = [
   { path: '/finance/settings', label: 'Paramètres', icon: Settings },
 ];
 
-export default function FinanceNav({ activePath = '/finance' }: { activePath?: string }) {
+export default function FinanceNav(_props: { activePath?: string } = {}) {
   return (
     <div className="flex items-center gap-1 overflow-x-auto pb-2 border-b border-exec/10 mb-4">
       {LINKS.map((l) => {
-        const isActive = activePath === l.path || activePath.startsWith(l.path + '/');
         const Icon = l.icon;
+
         return (
-          <a
+          <NavLink
             key={l.path}
-            href={l.path}
-            className={`
-              flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition
-              ${isActive
-                ? 'bg-copper/15 text-copper-light border border-copper/30'
-                : 'text-muted hover:text-ivory hover:bg-carbon border border-transparent'}
+            to={l.path}
+            end={l.path === '/finance'}
+            className={({ isActive }) => `
+              flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition border
+              ${
+                isActive
+                  ? 'bg-copper/15 text-copper-light border-copper/30'
+                  : 'text-muted hover:text-ivory hover:bg-carbon border-transparent'
+              }
             `}
           >
             <Icon size={13} />
             {l.label}
-          </a>
+          </NavLink>
         );
       })}
     </div>
