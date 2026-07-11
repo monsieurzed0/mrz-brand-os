@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Zap, Video, Type, Image, Copy, Sparkles, FileText, Palette } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Zap, Video, Type, Image, Copy, Sparkles, FileText, Palette, Check } from 'lucide-react';
 
 import Topbar from '@/components/Topbar';
 import SectionCard from '@/components/SectionCard';
@@ -10,29 +9,20 @@ import { api } from '@/lib/api';
 import { useApiQuery } from '@/hooks/useApiQuery';
 
 interface GeneratedFormat {
-  id?: string;
+  id: string;
   category: 'video' | 'text' | 'visual';
   format: string;
   content: string;
   description: string;
+  status: 'draft' | 'sent_script' | 'sent_visual' | string;
 }
 
-type UiIdea = {
-  id: string;
-  subject: string;
-  angle: string;
-  target: string;
-  product: string;
-  platform: string;
-  duration: number;
-  cta: string;
-  caption: string;
-  status: string;
-};
-
-function mapOutputType(type?: string): 'video' | 'text' | 'visual' {
-  if (type === 'video' || type === 'text' || type === 'visual') return type;
-  return 'text';
+function mapFormatToPlatform(format: string): string {
+  if (format === 'TikTok') return 'TikTok';
+  if (format === 'YouTube Shorts') return 'YouTube Shorts';
+  if (format === 'Instagram Reel') return 'Instagram Reel';
+  if (format === 'Vidéo LinkedIn') return 'LinkedIn';
+  return 'TikTok';
 }
 
 function mapDescription(type: string, label: string) {
@@ -41,34 +31,8 @@ function mapDescription(type: string, label: string) {
   return `Format texte — ${label}`;
 }
 
-async function persistOutputs(selectedIdea: UiIdea, outputs: GeneratedFormat[]) {
-  const saved: GeneratedFormat[] = [];
-
-  for (const item of outputs) {
-    const result: any = await api.createContentEngineOutput({
-      content_idea_id: selectedIdea.id,
-      output_type: item.category,
-      output_label: item.format,
-      platforme: selectedIdea.platform,
-      contenu: item.content,
-      status: 'draft',
-    });
-
-    saved.push({
-      id: result.id,
-      category: item.category,
-      format: item.format,
-      description: item.description,
-      content: item.content,
-    });
-  }
-
-  return saved;
-}
-
 export default function ContentEngine() {
   const { showToast } = useStore();
-  const navigate = useNavigate();
 
   const { data: contentIdeasData, loading: loadingIdeas, error: ideasError } = useApiQuery(
     api.getContentIdeas,
@@ -79,27 +43,16 @@ export default function ContentEngine() {
     api.getContentEngineOutputs,
     []
   );
-function mapFormatToPlatform(format: string) {
-  if (format === 'TikTok') return 'TikTok';
-  if (format === 'YouTube Shorts') return 'YouTube Shorts';
-  if (format === 'Instagram Reel') return 'Instagram Reel';
-  if (format === 'Vidéo LinkedIn') return 'LinkedIn';
-  return 'TikTok';
-}
+
   const [selectedIdeaId, setSelectedIdeaId] = useState('');
   const [generated, setGenerated] = useState<GeneratedFormat[]>([]);
   const [activeCategory, setActiveCategory] = useState<'video' | 'text' | 'visual' | null>('video');
+  const [sendingIds, setSendingIds] = useState<Set<string>>(new Set());
 
-  const readyIdeas: UiIdea[] = useMemo(() => {
+  const readyIdeas = useMemo(() => {
     const safe = Array.isArray(contentIdeasData) ? contentIdeasData : [];
-
     return safe
-      .filter(
-        (i: any) =>
-          i.status === 'idea_ready' ||
-          i.status === 'idea_pending' ||
-          i.status === 'script_pending'
-      )
+      .filter((i: any) => ['idea_ready', 'idea_pending', 'script_pending'].includes(i.status))
       .map((i: any) => ({
         id: i.id,
         subject: i.sujet || '',
@@ -123,13 +76,14 @@ function mapFormatToPlatform(format: string) {
     }
 
     const existingOutputs = (Array.isArray(outputsData) ? outputsData : [])
-      .filter((item: any) => item.content_idea_id === selectedIdea.id)
+      .filter((item: any) => item.content_idea_id === selectedIdea.id && item.status !== 'sent_script' && item.status !== 'sent_visual')
       .map((item: any) => ({
         id: item.id,
-        category: mapOutputType(item.output_type),
+        category: ['video', 'text', 'visual'].includes(item.output_type) ? item.output_type : 'text',
         format: item.output_label || 'Format',
         content: item.contenu || '',
         description: mapDescription(item.output_type, item.output_label || 'Format'),
+        status: item.status || 'draft',
       })) as GeneratedFormat[];
 
     if (existingOutputs.length > 0) {
@@ -141,7 +95,7 @@ function mapFormatToPlatform(format: string) {
 
     const s = selectedIdea;
 
-    const localOutputs: GeneratedFormat[] = [
+    const localOutputs: Omit<GeneratedFormat, 'id' | 'status'>[] = [
       {
         category: 'video',
         format: 'TikTok',
@@ -235,7 +189,18 @@ function mapFormatToPlatform(format: string) {
     ];
 
     try {
-      const saved = await persistOutputs(selectedIdea, localOutputs);
+      const saved: GeneratedFormat[] = [];
+      for (const item of localOutputs) {
+        const result: any = await api.createContentEngineOutput({
+          content_idea_id: selectedIdea.id,
+          output_type: item.category,
+          output_label: item.format,
+          platforme: selectedIdea.platform,
+          contenu: item.content,
+          status: 'draft',
+        });
+        saved.push({ ...item, id: result.id, status: 'draft' });
+      }
       setGenerated(saved);
       setActiveCategory('video');
       showToast(`${saved.length} formats générés et enregistrés`);
@@ -249,26 +214,71 @@ function mapFormatToPlatform(format: string) {
     showToast('Copié dans le presse-papier');
   };
 
-  const openVisualLab = (item: GeneratedFormat) => {
+  /* ------------------------------------------------------------------ */
+  /*  Envoyer vers Script Room — l'item disparaît localement              */
+  /* ------------------------------------------------------------------ */
+  const sendToScriptRoom = async (item: GeneratedFormat) => {
     if (!selectedIdea) {
       showToast('Aucune idée sélectionnée');
       return;
     }
+    if (!item.id) return;
 
-    navigate('/visual-lab', {
-      state: {
-        source: 'content-engine',
-        subject: selectedIdea.subject,
+    setSendingIds(prev => new Set(prev).add(item.id));
+
+    try {
+      await api.updateContentEngineOutput(item.id, { status: 'sent_script' });
+      await api.runScriptwriter({
+        content_idea_id: selectedIdea.id,
+        platform_override: mapFormatToPlatform(item.format),
+      });
+
+      setGenerated(prev => prev.filter(g => g.id !== item.id));
+      showToast(`Format "${item.format}" envoyé à Script Room`);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Erreur envoi Script Room');
+      setSendingIds(prev => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+    }
+  };
+
+  /* ------------------------------------------------------------------ */
+  /*  Envoyer vers Visual Lab — l'item disparaît localement               */
+  /* ------------------------------------------------------------------ */
+  const sendToVisualLab = async (item: GeneratedFormat) => {
+    if (!selectedIdea) {
+      showToast('Aucune idée sélectionnée');
+      return;
+    }
+    if (!item.id) return;
+
+    setSendingIds(prev => new Set(prev).add(item.id));
+
+    try {
+      await api.updateContentEngineOutput(item.id, { status: 'sent_visual' });
+      await api.createVisualPrompt({
+        related_script_id: null,
+        sujet: selectedIdea.subject,
         angle: selectedIdea.angle,
-        product: selectedIdea.product,
-        platform: selectedIdea.platform,
-        objective: item.description,
-        seedPrompt: item.content,
-        formatLabel: item.format,
-      },
-    });
+        produit: selectedIdea.product,
+        hook_visuel: item.description,
+        prompt_principal: item.content,
+        status: 'draft',
+      });
 
-    showToast('Brief envoyé vers Visual Lab');
+      setGenerated(prev => prev.filter(g => g.id !== item.id));
+      showToast(`Format "${item.format}" envoyé à Visual Lab`);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Erreur envoi Visual Lab');
+      setSendingIds(prev => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+    }
   };
 
   const categoryConfig = {
@@ -278,7 +288,6 @@ function mapFormatToPlatform(format: string) {
       color: 'text-copper',
       bgColor: 'bg-copper/15',
       borderColor: 'border-copper/30',
-      count: generated.filter((g) => g.category === 'video').length || 4,
     },
     text: {
       icon: Type,
@@ -286,7 +295,6 @@ function mapFormatToPlatform(format: string) {
       color: 'text-copper-light',
       bgColor: 'bg-copper-light/15',
       borderColor: 'border-copper-light/30',
-      count: generated.filter((g) => g.category === 'text').length || 6,
     },
     visual: {
       icon: Image,
@@ -294,7 +302,6 @@ function mapFormatToPlatform(format: string) {
       color: 'text-exec',
       bgColor: 'bg-exec/15',
       borderColor: 'border-exec/30',
-      count: generated.filter((g) => g.category === 'visual').length || 5,
     },
   };
 
@@ -337,7 +344,10 @@ function mapFormatToPlatform(format: string) {
               </label>
               <select
                 value={selectedIdeaId}
-                onChange={(e) => setSelectedIdeaId(e.target.value)}
+                onChange={(e) => {
+                  setSelectedIdeaId(e.target.value);
+                  setGenerated([]);
+                }}
                 className="w-full bg-deep border border-exec/15 rounded-xl px-4 py-3 text-sm text-ivory focus:outline-none focus:border-copper/30 transition"
               >
                 <option value="">— Sélectionnez une idée à transformer —</option>
@@ -389,6 +399,7 @@ function mapFormatToPlatform(format: string) {
               {(['video', 'text', 'visual'] as const).map((cat) => {
                 const config = categoryConfig[cat];
                 const isActive = activeCategory === cat;
+                const count = generated.filter(g => g.category === cat).length;
 
                 return (
                   <button
@@ -402,12 +413,8 @@ function mapFormatToPlatform(format: string) {
                   >
                     <config.icon size={18} />
                     <span className="font-semibold">{config.label}</span>
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full ${
-                        isActive ? 'bg-dark/30' : 'bg-deep'
-                      }`}
-                    >
-                      {config.count}
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${isActive ? 'bg-dark/30' : 'bg-deep'}`}>
+                      {count}
                     </span>
                   </button>
                 );
@@ -417,75 +424,66 @@ function mapFormatToPlatform(format: string) {
             {/* Generated content grid */}
             {activeCategory && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {currentItems.map((item, i) => (
-                  <div
-                    key={item.id || i}
-                    className="rounded-xl border border-exec/10 bg-carbon p-5 hover:border-copper/20 transition group"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h4 className="text-sm font-bold text-ivory">{item.format}</h4>
-                        <p className="text-[10px] text-subtle mt-0.5">{item.description}</p>
+                {currentItems.map((item) => {
+                  const isSending = sendingIds.has(item.id);
+                  return (
+                    <div
+                      key={item.id}
+                      className="rounded-xl border border-exec/10 bg-carbon p-5 hover:border-copper/20 transition group"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h4 className="text-sm font-bold text-ivory">{item.format}</h4>
+                          <p className="text-[10px] text-subtle mt-0.5">{item.description}</p>
+                        </div>
+
+                        <button
+                          onClick={() => copyContent(item.content)}
+                          className="p-2 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-copper/10 transition"
+                        >
+                          <Copy size={14} className="text-copper" />
+                        </button>
                       </div>
 
-                      <button
-                        onClick={() => copyContent(item.content)}
-                        className="p-2 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-copper/10 transition"
-                      >
-                        <Copy size={14} className="text-copper" />
-                      </button>
-                    </div>
+                      <div className="p-3 rounded-lg bg-deep border border-exec/5 max-h-36 overflow-y-auto mb-3">
+                        <p className="text-xs text-muted whitespace-pre-wrap leading-relaxed">
+                          {item.content}
+                        </p>
+                      </div>
 
-                    <div className="p-3 rounded-lg bg-deep border border-exec/5 max-h-36 overflow-y-auto mb-3">
-                      <p className="text-xs text-muted whitespace-pre-wrap leading-relaxed">
-                        {item.content}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => copyContent(item.content)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-copper/10 border border-copper/20 text-[10px] text-copper-light font-semibold hover:bg-copper/20 transition"
-                      >
-                        <Copy size={10} /> Copier
-                      </button>
-
-                      {item.category === 'video' && selectedIdea && (
-                      <button
-                        onClick={async () => {
-                          if (!selectedIdea) return;
-                      
-                          try {
-                            const result: any = await api.runScriptwriter({
-                              content_idea_id: selectedIdea.id,
-                              platform_override: mapFormatToPlatform(item.format),
-                              source_output_id: item.id,
-                            });
-                      
-                            showToast(`Script généré (${result?.mode || 'ok'})`);
-                            window.dispatchEvent(new CustomEvent('mrz-refresh-notifications'));
-                            navigate('/scripts');
-                          } catch (err) {
-                            showToast(err instanceof Error ? err.message : 'Erreur Scriptwriter');
-                          }
-                        }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-exec/15 text-[10px] text-muted font-semibold hover:border-copper/20 hover:text-copper-light transition"
-                      >
-                        <FileText size={10} /> Script Room
-                      </button>
-                      )}
-
-                      {item.category === 'visual' && (
+                      <div className="flex items-center gap-2">
                         <button
-                          onClick={() => openVisualLab(item)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-exec/15 text-[10px] text-muted font-semibold hover:border-copper/20 hover:text-copper-light transition"
+                          onClick={() => copyContent(item.content)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-copper/10 border border-copper/20 text-[10px] text-copper-light font-semibold hover:bg-copper/20 transition"
                         >
-                          <Palette size={10} /> Visual Lab
+                          <Copy size={10} /> Copier
                         </button>
-                      )}
+
+                        {item.category === 'video' && selectedIdea && (
+                          <button
+                            onClick={() => sendToScriptRoom(item)}
+                            disabled={isSending}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-exec/15 text-[10px] text-muted font-semibold hover:border-copper/20 hover:text-copper-light transition disabled:opacity-50"
+                          >
+                            {isSending ? <Check size={10} /> : <FileText size={10} />}
+                            {isSending ? 'Envoyé' : 'Script Room'}
+                          </button>
+                        )}
+
+                        {item.category === 'visual' && (
+                          <button
+                            onClick={() => sendToVisualLab(item)}
+                            disabled={isSending}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-exec/15 text-[10px] text-muted font-semibold hover:border-copper/20 hover:text-copper-light transition disabled:opacity-50"
+                          >
+                            {isSending ? <Check size={10} /> : <Palette size={10} />}
+                            {isSending ? 'Envoyé' : 'Visual Lab'}
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </>
@@ -507,9 +505,7 @@ function mapFormatToPlatform(format: string) {
               {Object.entries(categoryConfig).map(([key, config]) => (
                 <div key={key} className="flex items-center gap-2 text-xs text-subtle">
                   <config.icon size={14} className={config.color} />
-                  <span>
-                    {config.count} formats {config.label.toLowerCase()}
-                  </span>
+                  <span>Formats {config.label.toLowerCase()}</span>
                 </div>
               ))}
             </div>
