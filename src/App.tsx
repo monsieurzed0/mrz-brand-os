@@ -1,19 +1,16 @@
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { StoreProvider } from '@/lib/useStore';
-import Sidebar from '@/components/Sidebar';
-import Toast from '@/components/Toast';
+import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import {
+  LayoutDashboard, Bot, Brain, Lightbulb, PenTool, Palette, Target, Shield,
+  FileText, Receipt, Users, Wallet, BarChart3, Settings, Crown, Radio, FlaskConical
+} from 'lucide-react';
 import Dashboard from '@/pages/Dashboard';
-import Weekly from '@/pages/Weekly';
-import ContentLab from '@/pages/ContentLab';
-import ScriptRoom from '@/pages/ScriptRoom';
-import ContentEngine from '@/pages/ContentEngine';
-import VisualLab from '@/pages/VisualLab';
-import LeadDesk from '@/pages/LeadDesk';
-import Projects from '@/pages/Projects';
-import ProofBank from '@/pages/ProofBank';
 import AgentConsole from '@/pages/AgentConsole';
 import BrandMemory from '@/pages/BrandMemory';
-import MediaCenter from '@/pages/MediaCenter';
+import ContentLab from '@/pages/ContentLab';
+import ContentEngine from '@/pages/ContentEngine';
+import LeadDesk from '@/pages/LeadDesk';
+import VisualLab from '@/pages/VisualLab';
+import Weekly from '@/pages/Weekly';
 import FinanceDashboard from '@/pages/FinanceDashboard';
 import FinanceQuotes from '@/pages/FinanceQuotes';
 import FinanceInvoices from '@/pages/FinanceInvoices';
@@ -22,47 +19,84 @@ import FinanceSettings from '@/pages/FinanceSettings';
 import FinanceClients from '@/pages/FinanceClients';
 import FinanceExpenses from '@/pages/FinanceExpenses';
 
+const NAV = [
+  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/agents', label: 'Agents', icon: Bot },
+  { path: '/memory', label: 'Mémoire', icon: Brain },
+  { path: '/content', label: 'Content Lab', icon: Lightbulb },
+  { path: '/engine', label: 'Content Engine', icon: FlaskConical },
+  { path: '/scripts', label: 'Scripts', icon: PenTool },
+  { path: '/visual', label: 'Visual Lab', icon: Palette },
+  { path: '/leads', label: 'Leads', icon: Target },
+  { path: '/weekly', label: 'Weekly', icon: Crown },
+  { path: '/finance', label: 'Finance', icon: FileText },
+];
 
-
-function Layout() {
+function Sidebar() {
+  const loc = useLocation();
   return (
-    <div className="flex min-h-screen bg-dark">
-      <Sidebar />
-      <main className="flex-1 ml-60 min-h-screen">
-        <Routes>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/weekly" element={<Weekly />} />
-          <Route path="/content" element={<ContentLab />} />
-          <Route path="/scripts" element={<ScriptRoom />} />
-          <Route path="/content-engine" element={<ContentEngine />} />
-          <Route path="/visual-lab" element={<VisualLab />} />
-          <Route path="/leads" element={<LeadDesk />} />
-          <Route path="/projects" element={<Projects />} />
-          <Route path="/proof-bank" element={<ProofBank />} />
-          <Route path="/agents" element={<AgentConsole />} />
-          <Route path="/brand-memory" element={<BrandMemory />} />
-          <Route path="/media-center" element={<MediaCenter />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/finance" element={<FinanceDashboard />} />
-          <Route path="/finance/quotes" element={<FinanceQuotes />} />
-          <Route path="/finance/invoices" element={<FinanceInvoices />} />
-          <Route path="/finance/clients" element={<FinanceClients />} />
-          <Route path="/finance/expenses" element={<FinanceExpenses />} />
-          <Route path="/finance/reports" element={<FinanceReports />} />
-          <Route path="/finance/settings" element={<FinanceSettings />} />
-        </Routes>
-      </main>
-      <Toast />
-    </div>
+    <aside className="w-60 min-h-screen bg-carbon border-r border-exec/10 flex flex-col">
+      <div className="p-5 border-b border-exec/10">
+        <div className="flex items-center gap-2">
+          <Crown size={22} className="text-copper" />
+          <span className="text-sm font-bold text-ivory tracking-wide">Mr Z Brand OS</span>
+        </div>
+        <p className="text-[10px] text-subtle mt-1">SIGNAL™ • PROSKILLS FR</p>
+      </div>
+      <nav className="flex-1 p-3 space-y-1">
+        {NAV.map((n) => {
+          const Icon = n.icon;
+          const isActive = loc.pathname === n.path || (n.path !== '/' && loc.pathname.startsWith(n.path));
+          return (
+            <Link
+              key={n.path}
+              to={n.path}
+              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-semibold transition ${
+                isActive
+                  ? 'bg-copper/15 text-copper-light border border-copper/20'
+                  : 'text-muted hover:text-ivory hover:bg-carbon/80 border border-transparent'
+              }`}
+            >
+              <Icon size={15} />
+              {n.label}
+            </Link>
+          );
+        })}
+      </nav>
+      <div className="p-4 border-t border-exec/10 text-[10px] text-subtle">
+        © 2026 Mr Z Brand
+      </div>
+    </aside>
   );
 }
 
 export default function App() {
   return (
-    <StoreProvider>
-      <HashRouter>
-        <Layout />
-      </HashRouter>
-    </StoreProvider>
+    <BrowserRouter>
+      <div className="flex min-h-screen bg-deep text-ivory">
+        <Sidebar />
+        <main className="flex-1 min-h-screen overflow-y-auto">
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/agents" element={<AgentConsole />} />
+            <Route path="/memory" element={<BrandMemory />} />
+            <Route path="/content" element={<ContentLab />} />
+            <Route path="/engine" element={<ContentEngine />} />
+            <Route path="/scripts" element={<Weekly />} />
+            <Route path="/visual" element={<VisualLab />} />
+            <Route path="/leads" element={<LeadDesk />} />
+            <Route path="/weekly" element={<Weekly />} />
+            {/* Finance & Administration */}
+            <Route path="/finance" element={<FinanceDashboard />} />
+            <Route path="/finance/quotes" element={<FinanceQuotes />} />
+            <Route path="/finance/invoices" element={<FinanceInvoices />} />
+            <Route path="/finance/clients" element={<FinanceClients />} />
+            <Route path="/finance/expenses" element={<FinanceExpenses />} />
+            <Route path="/finance/reports" element={<FinanceReports />} />
+            <Route path="/finance/settings" element={<FinanceSettings />} />
+          </Routes>
+        </main>
+      </div>
+    </BrowserRouter>
   );
 }
