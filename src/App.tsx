@@ -14,6 +14,14 @@ import ProofBank from '@/pages/ProofBank';
 import AgentConsole from '@/pages/AgentConsole';
 import BrandMemory from '@/pages/BrandMemory';
 import MediaCenter from '@/pages/MediaCenter';
+import FinanceDashboard from '@/pages/FinanceDashboard';
+import FinanceQuotes from '@/pages/FinanceQuotes';
+import FinanceInvoices from '@/pages/FinanceInvoices';
+import FinanceReports from '@/pages/FinanceReports';
+import FinanceSettings from '@/pages/FinanceSettings';
+import FinanceClients from '@/pages/FinanceClients';
+import FinanceExpenses from '@/pages/FinanceExpenses';
+
 
 function Layout() {
   return (
@@ -34,6 +42,13 @@ function Layout() {
           <Route path="/brand-memory" element={<BrandMemory />} />
           <Route path="/media-center" element={<MediaCenter />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/finance" element={<FinanceDashboard />} />
+          <Route path="/finance/quotes" element={<FinanceQuotes />} />
+          <Route path="/finance/invoices" element={<FinanceInvoices />} />
+          <Route path="/finance/clients" element={<FinanceClients />} />
+          <Route path="/finance/expenses" element={<FinanceExpenses />} />
+          <Route path="/finance/reports" element={<FinanceReports />} />
+          <Route path="/finance/settings" element={<FinanceSettings />} />
         </Routes>
       </main>
       <Toast />
