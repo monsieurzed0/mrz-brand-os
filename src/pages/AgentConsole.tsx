@@ -1,7 +1,7 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useMemo, type ReactNode } from 'react';
 import {
   Crown, Radar, Lightbulb, PenTool, Palette, Target, Shield,
-  Play, Bot, Loader2, Filter, ChevronDown, X, Zap, CalendarDays, Radio
+  Play, Bot, Loader2, Filter, ChevronDown, X, Zap, CalendarDays, Radio, FlaskConical
 } from 'lucide-react';
 import Topbar from '@/components/Topbar';
 import SectionCard from '@/components/SectionCard';
@@ -11,6 +11,7 @@ import { useStore } from '@/lib/useStore';
 import { api } from '@/lib/api';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { AGENTS } from '@/lib/agentConstants';
+import type { AgentRunRecord } from '@/lib/api';
 
 const ICON_MAP: Record<string, ReactNode> = {
   Crown: <Crown size={20} />,
@@ -33,7 +34,7 @@ const relations = [
 ];
 
 /* ------------------------------------------------------------------ */
-/*  Semaine type — scénario de test                                    */
+/*  Semaine type — scénario de simulation                              */
 /* ------------------------------------------------------------------ */
 
 const WEEK_SCENARIO = [
@@ -54,6 +55,10 @@ function uid() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
+function sleep(ms: number) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
 export default function AgentConsole() {
   const { showToast } = useStore();
 
@@ -64,6 +69,9 @@ export default function AgentConsole() {
   const [activeAgentIds, setActiveAgentIds] = useState<string[]>([]);
   const [networkEvents, setNetworkEvents] = useState<NetworkEvent[]>([]);
 
+  /* Runs simulés — jamais persistés en D1, visibles 5 min localement */
+  const [simulatedRuns, setSimulatedRuns] = useState<AgentRunRecord[]>([]);
+
   const [runFilterAgent, setRunFilterAgent] = useState('');
   const [runFilterStatus, setRunFilterStatus] = useState('');
   const [runLimit, setRunLimit] = useState(10);
@@ -72,8 +80,13 @@ export default function AgentConsole() {
   const [simLog, setSimLog] = useState<Array<{ step: typeof WEEK_SCENARIO[0]; status: 'pending' | 'running' | 'done' | 'error' }>>([]);
 
   const agentRuns = Array.isArray(runsData) ? runsData : [];
+  /* Fusion runs réels + simulés pour le Topbar et les cartes */
+  const allAgentRuns = useMemo(() => {
+    const merged = [...agentRuns, ...simulatedRuns];
+    return merged.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+  }, [agentRuns, simulatedRuns]);
 
-  const filteredRuns = agentRuns.filter((run: any) => {
+  const filteredRuns = allAgentRuns.filter((run: any) => {
     if (runFilterAgent && run.agent_name !== runFilterAgent) return false;
     if (runFilterStatus && run.run_status !== runFilterStatus) return false;
     return true;
@@ -86,7 +99,62 @@ export default function AgentConsole() {
     setNetworkEvents(prev => [...prev.slice(-30), { ...event, id: uid(), timestamp: Date.now() }]);
   };
 
-  /* -------- launch a single agent -------- */
+  /* ------------------------------------------------------------------ */
+  /*  SIMULATION — aucun appel API, aucune écriture D1, aucun token      */
+  /* ------------------------------------------------------------------ */
+  const simulateAgent = async (agent: typeof AGENTS[number]) => {
+    setActiveAgentIds(prev => [...prev, agent.id]);
+
+    emit({ type: 'pulse', node: agent.id });
+    emit({ type: 'packet', from: agent.id, to: 'backend', label: 'POST /run (simulation)', status: 'running' });
+
+    await sleep(300);
+    emit({ type: 'packet', from: 'backend', to: 'internet', label: `LLM ${agent.id === 'content-strategist' ? 'qwen' : 'groq'} (simulation)`, status: 'success' });
+
+    await sleep(400);
+    emit({ type: 'packet', from: 'internet', to: 'backend', label: 'Tokens OK (simulation)', status: 'success' });
+
+    await sleep(300);
+    emit({ type: 'packet', from: 'backend', to: 'd1', label: 'INSERT / UPDATE (simulation)', status: 'success' });
+
+    if (agent.id === 'chief-of-staff') {
+      await sleep(200);
+      emit({ type: 'packet', from: 'backend', to: 'kv', label: 'Invalidate cache (simulation)', status: 'success' });
+    }
+
+    await sleep(200);
+    emit({ type: 'packet', from: 'backend', to: agent.id, label: 'Done (simulation)', status: 'success' });
+
+    showToast(`${agent.name} simulé — aucun token consommé, aucune écriture D1`);
+
+    /* Run ghost local — visible 5 min dans le Topbar */
+    const nowIso = new Date().toISOString();
+    const fakeRun: AgentRunRecord = {
+      id: `sim-${Date.now()}-${agent.id}`,
+      agent_name: agent.name,
+      input_summary: 'mode=simulate',
+      output_summary: `Simulation semaine type — ${agent.name}`,
+      run_status: 'done',
+      provider: 'simulation',
+      model: 'none',
+      latency_ms: 1200,
+      created_at: nowIso,
+      updated_at: nowIso,
+      error_text: null,
+    };
+
+    setSimulatedRuns(prev => [...prev, fakeRun]);
+    setTimeout(() => {
+      setSimulatedRuns(prev => prev.filter(r => r.id !== fakeRun.id));
+    }, 5 * 60 * 1000);
+
+    setActiveAgentIds(prev => prev.filter(id => id !== agent.id));
+    return fakeRun;
+  };
+
+  /* ------------------------------------------------------------------ */
+  /*  VRAI LANCEMENT — appel API, tokens consommés, écriture D1          */
+  /* ------------------------------------------------------------------ */
   const launchAgent = async (agent: typeof AGENTS[number]) => {
     setLaunching(agent.id);
     setActiveAgentIds(prev => [...prev, agent.id]);
@@ -132,16 +200,15 @@ export default function AgentConsole() {
           return null;
       }
 
-      /* --- backend flow simulation --- */
       const provider = result?.provider || 'unknown';
       const fallback = result?.fallback || false;
 
       setTimeout(() => {
-        emit({ type: 'packet', from: 'backend', to: 'internet', label: `LLM ${provider}`, status: 'success' });
+        emit({ type: 'packet', from: 'backend', to: 'internet', label: `LLM ${provider}`, status: fallback ? 'error' : 'success' });
       }, 300);
 
       setTimeout(() => {
-        emit({ type: 'packet', from: 'internet', to: 'backend', label: 'Tokens OK', status: 'success' });
+        emit({ type: 'packet', from: 'internet', to: 'backend', label: fallback ? 'Fallback' : 'Tokens OK', status: fallback ? 'error' : 'success' });
       }, 700);
 
       setTimeout(() => {
@@ -155,10 +222,10 @@ export default function AgentConsole() {
       }
 
       setTimeout(() => {
-        emit({ type: 'packet', from: 'backend', to: agent.id, label: 'Done', status: 'success' });
+        emit({ type: 'packet', from: 'backend', to: agent.id, label: fallback ? 'Done (fallback)' : 'Done', status: fallback ? 'error' : 'success' });
       }, 1200);
 
-      showToast(`${agent.name} exécuté — via ${provider}`);
+      showToast(`${agent.name} exécuté — ${fallback ? 'fallback local' : `via ${provider}`}`);
 
       const fresh = await api.getAgentRuns();
       setRunsData(fresh);
@@ -191,7 +258,7 @@ export default function AgentConsole() {
       emit({ type: 'log', label: `▶ ${step.day} ${step.time} — ${agent.name} : ${step.label}` });
 
       try {
-        await launchAgent(agent);
+        await simulateAgent(agent);
         setSimLog(prev => prev.map((l, idx) => idx === i ? { ...l, status: 'done' } : l));
       } catch (e) {
         setSimLog(prev => prev.map((l, idx) => idx === i ? { ...l, status: 'error' } : l));
@@ -199,20 +266,20 @@ export default function AgentConsole() {
 
       /* Respiration entre agents */
       if (i < WEEK_SCENARIO.length - 1) {
-        await new Promise(r => setTimeout(r, 2000));
+        await sleep(2000);
       }
     }
 
     setSimulating(false);
-    showToast('Simulation semaine terminée');
+    showToast('Simulation semaine terminée — aucune donnée persistante, aucun token consommé');
   };
 
-  /* -------- agent card status -------- */
+  /* -------- agent card status (fusion runs réels + simulés) -------- */
   const FIVE_MIN = 5 * 60 * 1000;
   const cardStatus: Record<string, 'running' | 'alive' | 'failed' | 'sleep'> = {};
   AGENTS.forEach(agent => {
     if (activeAgentIds.includes(agent.id)) { cardStatus[agent.id] = 'running'; return; }
-    const lastRun = agentRuns
+    const lastRun = allAgentRuns
       .filter((r: any) => r.agent_name === agent.name)
       .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())[0];
     if (lastRun && lastRun.created_at) {
@@ -227,7 +294,7 @@ export default function AgentConsole() {
 
   return (
     <div className="flex flex-col h-screen">
-      <Topbar title="Agent Console" agentRuns={agentRuns} activeAgentIds={activeAgentIds} />
+      <Topbar title="Agent Console" agentRuns={allAgentRuns} activeAgentIds={activeAgentIds} />
 
       <div className="p-5 space-y-5 overflow-y-auto flex-1">
         {/* Header */}
@@ -242,14 +309,18 @@ export default function AgentConsole() {
             disabled={simulating}
             className="flex items-center gap-2 px-3 py-2 rounded-lg bg-copper/15 border border-copper/30 text-copper-light text-xs font-bold hover:bg-copper/25 transition disabled:opacity-50"
           >
-            {simulating ? <Loader2 size={12} className="animate-spin" /> : <CalendarDays size={12} />}
-            {simulating ? 'Simulation en cours…' : '▶ Simuler la semaine type'}
+            {simulating ? <Loader2 size={12} className="animate-spin" /> : <FlaskConical size={12} />}
+            {simulating ? 'Simulation en cours…' : '🧪 Simuler la semaine type'}
           </button>
         </div>
 
         {/* Simulation log */}
         {simLog.length > 0 && (
-          <SectionCard title="Journal de simulation" subtitle="Scénario 7 jours — exécution séquentielle">
+          <SectionCard title={"Journal de simulation"} subtitle="Scénario 7 jours — exécution visuelle sans tokens ni D1">
+            <div className="flex items-center gap-2 mb-3 px-2 py-1 rounded bg-copper/10 border border-copper/20 text-[10px] text-copper-light uppercase tracking-wider font-bold w-fit">
+              <FlaskConical size={10} />
+              Mode simulation — aucune donnée persistante
+            </div>
             <div className="flex gap-2 overflow-x-auto pb-1">
               {simLog.map((l, i) => (
                 <div key={i} className={`
@@ -266,6 +337,7 @@ export default function AgentConsole() {
                   } />
                   <span className="font-mono">{l.step.day} {l.step.time}</span>
                   <span className="font-semibold">{l.step.label}</span>
+                  {l.status === 'done' && <span className="text-[10px] text-subtle">(sim)</span>}
                 </div>
               ))}
             </div>
@@ -397,7 +469,15 @@ export default function AgentConsole() {
                   displayedRuns.map((run: any) => (
                     <tr key={run.id} className="hover:bg-carbon/40 transition">
                       <td className="px-4 py-3 text-ivory font-medium">{run.agent_name}</td>
-                      <td className="px-4 py-3 text-muted text-xs">{run.provider || '—'}</td>
+                      <td className="px-4 py-3 text-muted text-xs">
+                        {run.provider === 'simulation' ? (
+                          <span className="flex items-center gap-1">
+                            <FlaskConical size={10} className="text-copper" /> simulation
+                          </span>
+                        ) : (
+                          run.provider || '—'
+                        )}
+                      </td>
                       <td className="px-4 py-3"><StatusBadge status={run.run_status || 'done'} /></td>
                       <td className="px-4 py-3 text-muted text-xs max-w-xs truncate">{run.output_summary}</td>
                       <td className="px-4 py-3 text-subtle text-xs">{run.created_at ? new Date(run.created_at).toLocaleDateString('fr-FR') : '—'}</td>
