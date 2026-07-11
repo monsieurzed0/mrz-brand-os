@@ -9,7 +9,7 @@ import { useStore } from '@/lib/useStore';
 
 export default function FinanceSettings() {
   const { showToast } = useStore();
-  const { data: settingsData, setData: setSettingsData } = useApiQuery(api.getCompanySettings, {});
+  const { data: settingsData, setData: setSettingsData } = useApiQuery(api.getCompanySettings, []);
   const { data: servicesData, setData: setServicesData } = useApiQuery(api.getServicesCatalog, []);
   const { data: ratesData, setData: setRatesData } = useApiQuery(api.getExchangeRates, []);
 
