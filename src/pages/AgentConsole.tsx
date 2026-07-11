@@ -133,15 +133,15 @@ export default function AgentConsole() {
       }
 
       /* --- backend flow simulation --- */
-      const provider = result?.provider || 'fallback';
-      const fallback = result?.fallback || result?.mode === 'fallback';
+      const provider = result?.provider || 'unknown';
+      const fallback = result?.fallback || false;
 
       setTimeout(() => {
-        emit({ type: 'packet', from: 'backend', to: 'internet', label: `LLM ${provider}`, status: fallback ? 'error' : 'success' });
+        emit({ type: 'packet', from: 'backend', to: 'internet', label: `LLM ${provider}`, status: 'success' });
       }, 300);
 
       setTimeout(() => {
-        emit({ type: 'packet', from: 'internet', to: 'backend', label: fallback ? 'Fallback' : 'Tokens OK', status: fallback ? 'error' : 'success' });
+        emit({ type: 'packet', from: 'internet', to: 'backend', label: 'Tokens OK', status: 'success' });
       }, 700);
 
       setTimeout(() => {
@@ -155,10 +155,10 @@ export default function AgentConsole() {
       }
 
       setTimeout(() => {
-        emit({ type: 'packet', from: 'backend', to: agent.id, label: fallback ? 'Done (fallback)' : 'Done', status: fallback ? 'error' : 'success' });
+        emit({ type: 'packet', from: 'backend', to: agent.id, label: 'Done', status: 'success' });
       }, 1200);
 
-      showToast(`${agent.name} exécuté — ${fallback ? 'fallback local' : `via ${provider}`}`);
+      showToast(`${agent.name} exécuté — via ${provider}`);
 
       const fresh = await api.getAgentRuns();
       setRunsData(fresh);
@@ -207,9 +207,9 @@ export default function AgentConsole() {
     showToast('Simulation semaine terminée');
   };
 
-  /* -------- agent card status (direct, no useMemo with Date.now) -------- */
+  /* -------- agent card status -------- */
   const FIVE_MIN = 5 * 60 * 1000;
-  const cardStatus: Record<string, 'running' | 'alive' | 'sleep'> = {};
+  const cardStatus: Record<string, 'running' | 'alive' | 'failed' | 'sleep'> = {};
   AGENTS.forEach(agent => {
     if (activeAgentIds.includes(agent.id)) { cardStatus[agent.id] = 'running'; return; }
     const lastRun = agentRuns
@@ -217,7 +217,10 @@ export default function AgentConsole() {
       .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())[0];
     if (lastRun && lastRun.created_at) {
       const t = new Date(lastRun.created_at).getTime();
-      if (!Number.isNaN(t) && (Date.now() - t) < FIVE_MIN) { cardStatus[agent.id] = 'alive'; return; }
+      if (!Number.isNaN(t) && (Date.now() - t) < FIVE_MIN) {
+        if (lastRun.run_status === 'failed') { cardStatus[agent.id] = 'failed'; return; }
+        cardStatus[agent.id] = 'alive'; return;
+      }
     }
     cardStatus[agent.id] = 'sleep';
   });
@@ -289,6 +292,7 @@ export default function AgentConsole() {
                     p-2.5 rounded-lg transition-all duration-500
                     ${status === 'running' ? 'bg-copper/25 text-copper animate-pulse' : ''}
                     ${status === 'alive' ? 'bg-emerald-900/20 text-emerald-400' : ''}
+                    ${status === 'failed' ? 'bg-red-900/20 text-red-400' : ''}
                     ${status === 'sleep' ? 'bg-copper/15 text-copper' : ''}
                   `}>
                     {ICON_MAP[agent.icon] || <Bot size={20} />}
@@ -298,9 +302,10 @@ export default function AgentConsole() {
                       w-2 h-2 rounded-full transition-all duration-500
                       ${status === 'running' ? 'bg-copper animate-pulse' : ''}
                       ${status === 'alive' ? 'bg-emerald-400' : ''}
+                      ${status === 'failed' ? 'bg-red-500' : ''}
                       ${status === 'sleep' ? 'bg-gray-600' : ''}
                     `} />
-                    <StatusBadge status={status === 'running' ? 'active' : status === 'alive' ? 'done' : 'pending'} />
+                    <StatusBadge status={status === 'running' ? 'active' : status === 'alive' ? 'done' : status === 'failed' ? 'failed' : 'pending'} />
                   </div>
                 </div>
                 <h3 className="text-sm font-bold text-ivory mb-1">{agent.name}</h3>
