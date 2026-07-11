@@ -1,7 +1,7 @@
 import { useState, useMemo, type ReactNode } from 'react';
 import {
   Crown, Radar, Lightbulb, PenTool, Palette, Target, Shield,
-  Play, Bot, Loader2, Filter, ChevronDown, X, Zap, CalendarDays, Radio, FlaskConical
+  Play, Bot, Loader2, Filter, ChevronDown, X, Zap, CalendarDays, Radio, FlaskConical, Volume2, VolumeX
 } from 'lucide-react';
 import Topbar from '@/components/Topbar';
 import SectionCard from '@/components/SectionCard';
@@ -11,6 +11,7 @@ import { useStore } from '@/lib/useStore';
 import { api } from '@/lib/api';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { AGENTS } from '@/lib/agentConstants';
+import { useSound } from '@/hooks/useSound';
 import type { AgentRunRecord } from '@/lib/api';
 
 const ICON_MAP: Record<string, ReactNode> = {
@@ -34,7 +35,7 @@ const relations = [
 ];
 
 /* ------------------------------------------------------------------ */
-/*  Semaine type — scénario de simulation                              */
+/*  Semaine type — scénario de test                                    */
 /* ------------------------------------------------------------------ */
 
 const WEEK_SCENARIO = [
@@ -61,6 +62,7 @@ function sleep(ms: number) {
 
 export default function AgentConsole() {
   const { showToast } = useStore();
+  const { synth, muted, toggle } = useSound();
 
   const { data: runsData, loading: runsLoading, setData: setRunsData } = useApiQuery(api.getAgentRuns, []);
   const { data: scriptsData } = useApiQuery(api.getScripts, []);
@@ -126,6 +128,7 @@ export default function AgentConsole() {
     emit({ type: 'packet', from: 'backend', to: agent.id, label: 'Done (simulation)', status: 'success' });
 
     showToast(`${agent.name} simulé — aucun token consommé, aucune écriture D1`);
+    synth.toast();
 
     /* Run ghost local — visible 5 min dans le Topbar */
     const nowIso = new Date().toISOString();
@@ -156,8 +159,10 @@ export default function AgentConsole() {
   /*  VRAI LANCEMENT — appel API, tokens consommés, écriture D1          */
   /* ------------------------------------------------------------------ */
   const launchAgent = async (agent: typeof AGENTS[number]) => {
+    synth.init(); /* déverrouille AudioContext sur le premier clic utilisateur */
     setLaunching(agent.id);
     setActiveAgentIds(prev => [...prev, agent.id]);
+    synth.agentPulse(agent.id);
 
     emit({ type: 'pulse', node: agent.id });
     emit({ type: 'packet', from: agent.id, to: 'backend', label: 'POST /run', status: 'running' });
@@ -182,6 +187,7 @@ export default function AgentConsole() {
           const lastScript = scripts[0];
           if (!lastScript) {
             showToast('Aucun script disponible. Générez un script d\'abord.');
+            synth.error();
             setActiveAgentIds(prev => prev.filter(id => id !== agent.id));
             setLaunching(null);
             return null;
@@ -226,6 +232,7 @@ export default function AgentConsole() {
       }, 1200);
 
       showToast(`${agent.name} exécuté — ${fallback ? 'fallback local' : `via ${provider}`}`);
+      synth.success();
 
       const fresh = await api.getAgentRuns();
       setRunsData(fresh);
@@ -234,6 +241,7 @@ export default function AgentConsole() {
       setTimeout(() => {
         emit({ type: 'packet', from: 'backend', to: agent.id, label: 'Erreur', status: 'error' });
       }, 400);
+      synth.error();
       showToast(err instanceof Error ? err.message : `Erreur ${agent.name}`);
       return null;
     } finally {
@@ -245,6 +253,8 @@ export default function AgentConsole() {
   /* -------- week simulation -------- */
   const runWeekSimulation = async () => {
     if (simulating) return;
+    synth.init();
+    synth.simulationStart();
     setSimulating(true);
     setSimLog(WEEK_SCENARIO.map(s => ({ step: s, status: 'pending' })));
     setNetworkEvents([]);
@@ -259,8 +269,10 @@ export default function AgentConsole() {
 
       try {
         await simulateAgent(agent);
+        synth.simulationStep();
         setSimLog(prev => prev.map((l, idx) => idx === i ? { ...l, status: 'done' } : l));
       } catch (e) {
+        synth.error();
         setSimLog(prev => prev.map((l, idx) => idx === i ? { ...l, status: 'error' } : l));
       }
 
@@ -271,6 +283,7 @@ export default function AgentConsole() {
     }
 
     setSimulating(false);
+    synth.simulationStep();
     showToast('Simulation semaine terminée — aucune donnée persistante, aucun token consommé');
   };
 
@@ -297,21 +310,31 @@ export default function AgentConsole() {
       <Topbar title="Agent Console" agentRuns={allAgentRuns} activeAgentIds={activeAgentIds} />
 
       <div className="p-5 space-y-5 overflow-y-auto flex-1">
-        {/* Header */}
+        {/* Header + Audio toggle */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2">
             <Bot size={20} className="text-copper" />
             <h2 className="text-lg font-bold text-ivory">Salle des agents</h2>
             <span className="text-xs text-subtle">— 7 agents IA spécialisés</span>
           </div>
-          <button
-            onClick={runWeekSimulation}
-            disabled={simulating}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-copper/15 border border-copper/30 text-copper-light text-xs font-bold hover:bg-copper/25 transition disabled:opacity-50"
-          >
-            {simulating ? <Loader2 size={12} className="animate-spin" /> : <FlaskConical size={12} />}
-            {simulating ? 'Simulation en cours…' : '🧪 Simuler la semaine type'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggle}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-carbon border border-exec/15 text-muted text-xs hover:border-copper/30 hover:text-copper transition"
+              title={muted ? 'Activer le son' : 'Couper le son'}
+            >
+              {muted ? <VolumeX size={14} /> : <Volume2 size={14} className="text-copper" />}
+              <span className="hidden sm:inline">{muted ? 'Sourdine' : 'Son actif'}</span>
+            </button>
+            <button
+              onClick={runWeekSimulation}
+              disabled={simulating}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-copper/15 border border-copper/30 text-copper-light text-xs font-bold hover:bg-copper/25 transition disabled:opacity-50"
+            >
+              {simulating ? <Loader2 size={12} className="animate-spin" /> : <FlaskConical size={12} />}
+              {simulating ? 'Simulation en cours…' : '🧪 Simuler la semaine type'}
+            </button>
+          </div>
         </div>
 
         {/* Simulation log — hauteur fixe, jamais conditionnel */}
@@ -349,7 +372,7 @@ export default function AgentConsole() {
         </SectionCard>
 
         {/* Live network map */}
-        <AgentNetwork events={networkEvents} activeAgentIds={activeAgentIds} />
+        <AgentNetwork events={networkEvents} activeAgentIds={activeAgentIds} synth={synth} />
 
         {/* Agent cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
