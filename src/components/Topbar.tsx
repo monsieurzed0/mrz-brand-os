@@ -31,7 +31,6 @@ export default function Topbar({ title, agentRuns: propAgentRuns, activeAgentIds
   const notifications = Array.isArray(notificationsData) ? notificationsData : [];
   const fetchedAgentRuns = Array.isArray(agentRunsData) ? agentRunsData : [];
 
-  /* Fallback : AgentConsole peut injecter ses propres données temps réel */
   const agentRuns = propAgentRuns && propAgentRuns.length > 0 ? propAgentRuns : fetchedAgentRuns;
   const activeAgentIds = propActiveAgentIds || [];
 
@@ -39,13 +38,10 @@ export default function Topbar({ title, agentRuns: propAgentRuns, activeAgentIds
     return notifications.filter((n: any) => n.status === 'unread').length;
   }, [notifications]);
 
-  /* ------------------------------------------------------------------ */
-  /*  État vivant des 7 agents : Running / Alive (< 5 min) / Sleep      */
-  /* ------------------------------------------------------------------ */
   const FIVE_MIN = 5 * 60 * 1000;
-  const now = Date.now();
 
   const agentStatus = useMemo(() => {
+    const now = Date.now();
     return AGENTS.map(agent => {
       if (activeAgentIds.includes(agent.id)) return 'running';
       const lastRun = agentRuns
@@ -57,7 +53,7 @@ export default function Topbar({ title, agentRuns: propAgentRuns, activeAgentIds
       }
       return 'sleep';
     });
-  }, [agentRuns, activeAgentIds, now]);
+  }, [agentRuns, activeAgentIds]);
 
   const aliveCount = agentStatus.filter(s => s === 'alive' || s === 'running').length;
   const systemHealthy = aliveCount >= 3;
@@ -114,30 +110,22 @@ export default function Topbar({ title, agentRuns: propAgentRuns, activeAgentIds
     <>
       <header className="sticky top-0 z-40 bg-dark/90 backdrop-blur-xl border-b border-exec/10">
         <div className="flex items-center justify-between px-6 py-3">
-          {/* Left */}
           <div className="flex items-center gap-3">
             <h1 className="text-lg font-bold text-ivory tracking-wide">{title}</h1>
           </div>
 
-          {/* Center */}
           <div className="flex-1 max-w-lg mx-8">
             <GlobalSearch />
           </div>
 
-          {/* Right */}
           <div className="flex items-center gap-3">
-            {/* Worker OK */}
             <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-carbon/60 border border-exec/10">
               <Wifi size={12} className="text-emerald-400" />
               <span className="text-[10px] text-muted font-mono uppercase tracking-wider hidden sm:inline">Worker OK</span>
             </div>
 
-            {/* 7 pastilles agents */}
             <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-carbon/60 border border-exec/10">
-              <Activity
-                size={13}
-                className={systemHealthy ? 'text-copper' : 'text-subtle'}
-              />
+              <Activity size={13} className={systemHealthy ? 'text-copper' : 'text-subtle'} />
               <div className="flex items-center gap-1">
                 {AGENTS.map((agent, i) => {
                   const status = agentStatus[i];
@@ -154,7 +142,6 @@ export default function Topbar({ title, agentRuns: propAgentRuns, activeAgentIds
                           }
                         `}
                       />
-                      {/* Tooltip */}
                       <div className="absolute -top-7 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded bg-dark border border-exec/10 text-[10px] text-ivory opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none z-50">
                         {agent.short} — {status === 'running' ? 'Exécution…' : status === 'alive' ? 'En ligne' : 'Sleep'}
                       </div>
@@ -162,9 +149,7 @@ export default function Topbar({ title, agentRuns: propAgentRuns, activeAgentIds
                   );
                 })}
               </div>
-              <span className="text-xs font-semibold text-muted tabular-nums">
-                {aliveCount}/7
-              </span>
+              <span className="text-xs font-semibold text-muted tabular-nums">{aliveCount}/7</span>
             </div>
 
             <div className="w-px h-6 bg-exec/15" />
