@@ -4,6 +4,7 @@ import {
   Server, Globe, Database, HardDrive, Zap, ArrowRight
 } from 'lucide-react';
 import { AGENTS } from '@/lib/agentConstants';
+import type { BrandOSSynth } from '@/hooks/useSound';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                             */
@@ -117,13 +118,22 @@ function TravellingPacket({
 interface AgentNetworkProps {
   events: NetworkEvent[];
   activeAgentIds: string[];
+  synth?: BrandOSSynth | null;
 }
 
-export default function AgentNetwork({ events, activeAgentIds }: AgentNetworkProps) {
+export default function AgentNetwork({ events, activeAgentIds, synth }: AgentNetworkProps) {
   const [packets, setPackets] = useState<Packet[]>([]);
   const processedIds = useRef<Set<string>>(new Set());
+  const lastSoundTime = useRef<number>(0);
 
-  /* Traiter tous les NOUVEAUX events — plus de perte de packets */
+  const canSound = () => {
+    const now = Date.now();
+    if (now - lastSoundTime.current < 80) return false; /* 80ms debounce */
+    lastSoundTime.current = now;
+    return true;
+  };
+
+  /* Spawn packets from new events + son */
   useEffect(() => {
     if (!events.length) return;
 
@@ -151,16 +161,31 @@ export default function AgentNetwork({ events, activeAgentIds }: AgentNetworkPro
           label: event.label || '',
           status: event.status || 'running',
           createdAt: Date.now(),
-          duration: 800,
+          duration: 1600, /* 2× plus lent que l'original 800ms */
         };
 
         setPackets(p => [...p, newPacket]);
         setTimeout(() => {
           setPackets(p => p.filter(x => x.id !== newPacket.id));
+          /* Son d'arrivée */
+          if (synth && canSound()) {
+            if (event.status === 'error') synth.error();
+            else synth.packetArrive();
+          }
         }, newPacket.duration + 150);
+
+        /* Son de départ */
+        if (synth && canSound()) {
+          synth.packetDepart();
+        }
+      }
+
+      /* Son pulse agent */
+      if (event.type === 'pulse' && event.node && synth && canSound()) {
+        synth.agentPulse(event.node);
       }
     });
-  }, [events]);
+  }, [events, synth]);
 
   /* Derive active nodes */
   const activeNodes = new Set<string>();
