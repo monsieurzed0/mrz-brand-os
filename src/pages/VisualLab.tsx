@@ -11,6 +11,8 @@ type VisualResult = {
   id?: string;
   hookVisual: string;
   mainPrompt: string;
+  promptChatgpt: string;
+  promptNanoBanana: string;
   variantA: string;
   variantB: string;
   variantC: string;
@@ -52,15 +54,21 @@ export default function VisualLab() {
     return '16:9';
   }, [form.format]);
 
-  const buildVisualResult = (): VisualResult => ({
-    hookVisual: `Bold typographic composition: "${form.subject.split(' ').slice(0, 6).join(' ')}" — Raleway ExtraBold, #F0EDE8 on #0D0D10, copper accent line #D67A2C, minimal asymmetric layout, ${form.format}`,
-    mainPrompt: `Cinematic brand visual, ${form.subject}, premium dark editorial aesthetic, copper and charcoal palette (#D67A2C, #1F1F21, #0D0D10), ${form.angle || 'modern'} composition, professional studio lighting, depth of field, architectural precision, ${form.product} brand universe, texture and materiality, no text --ar ${aspectRatio} --style raw --v 6`,
-    variantA: `Dark luxury brand scene, ${form.subject}, close-up detail shot, warm copper light accents, shallow depth of field, editorial magazine aesthetic, ${form.product}, premium African design influence --ar ${aspectRatio} --style raw`,
-    variantB: `Abstract geometric composition inspired by ${form.subject}, interlocking shapes in charcoal and copper tones, Bauhaus meets African design, minimal premium, ${form.product} brand identity --ar ${form.format.includes('Carré') ? '1:1' : aspectRatio} --style raw`,
-    variantC: `Atmospheric moody scene, ${form.subject}, dramatic side lighting, ${form.angle || 'editorial'} mood, dark environment with copper highlights, texture-rich surfaces, architectural depth, ${form.product} --ar ${aspectRatio} --style raw`,
-    negativePrompt: 'text, watermark, logo, bright colors, blue tones, purple, neon, green glow, cartoon, illustration, anime, low quality, blurry, generic stock photo, smiling business people, laptops, white background, startup cliché, crypto aesthetic',
-    notePS: `Calques Photoshop recommandés :\n1. Fond — #0D0D10 solid\n2. Image générée — mode Luminosité, 85% opacité\n3. Overlay texture hero-bg.jpg — Multiply, 8% opacité\n4. Gradient — dégradé bas → #0D0D10, 40% hauteur\n5. Titre — Raleway Bold, #F0EDE8, corps 48pt\n6. Sous-titre — Raleway Medium, #A1A1AA, corps 18pt\n7. Accent — rectangle #D67A2C, 3px\n8. Logo ${form.product} — coin inférieur droit\n9. Export : ${form.format.split(' ')[0]} PNG 300dpi + JPG web`,
-  });
+  const buildVisualResult = (): VisualResult => {
+    const chatgptPrompt = `Cinematic brand visual, ${form.subject}, premium dark editorial aesthetic, copper and charcoal palette (#D67A2C, #1F1F21, #0D0D10), ${form.angle || 'modern'} composition, professional studio lighting, depth of field, architectural precision, ${form.product} brand universe, texture and materiality, no text --ar ${aspectRatio} --style raw --v 6`;
+    const nanoPrompt = `((masterpiece, best quality, ultra-detailed, 8k uhd)), cinematic brand visual, ${form.subject}, premium dark editorial aesthetic, deep copper and charcoal palette, ${form.angle || 'modern'} composition, professional studio lighting, depth of field, architectural precision, ${form.product} brand universe, texture and materiality, film grain, photorealistic, no text, no watermark, no logo, no bright colors, no cartoon, no illustration`;
+    return {
+      hookVisual: `Bold typographic composition: "${form.subject.split(' ').slice(0, 6).join(' ')}" — Raleway ExtraBold, #F0EDE8 on #0D0D10, copper accent line #D67A2C, minimal asymmetric layout, ${form.format}`,
+      mainPrompt: chatgptPrompt,
+      promptChatgpt: chatgptPrompt,
+      promptNanoBanana: nanoPrompt,
+      variantA: `Dark luxury brand scene, ${form.subject}, close-up detail shot, warm copper light accents, shallow depth of field, editorial magazine aesthetic, ${form.product}, premium African design influence --ar ${aspectRatio} --style raw`,
+      variantB: `Abstract geometric composition inspired by ${form.subject}, interlocking shapes in charcoal and copper tones, Bauhaus meets African design, minimal premium, ${form.product} brand identity --ar ${form.format.includes('Carré') ? '1:1' : aspectRatio} --style raw`,
+      variantC: `Atmospheric moody scene, ${form.subject}, dramatic side lighting, ${form.angle || 'editorial'} mood, dark environment with copper highlights, texture-rich surfaces, architectural depth, ${form.product} --ar ${aspectRatio} --style raw`,
+      negativePrompt: 'text, watermark, logo, bright colors, blue tones, purple, neon, green glow, cartoon, illustration, anime, low quality, blurry, generic stock photo, smiling business people, laptops, white background, startup cliché, crypto aesthetic',
+      notePS: `Calques Photoshop recommandés :\n1. Fond — #0D0D10 solid\n2. Image générée — mode Luminosité, 85% opacité\n3. Overlay texture hero-bg.jpg — Multiply, 8% opacité\n4. Gradient — dégradé bas → #0D0D10, 40% hauteur\n5. Titre — Raleway Bold, #F0EDE8, corps 48pt\n6. Sous-titre — Raleway Medium, #A1A1AA, corps 18pt\n7. Accent — rectangle #D67A2C, 3px\n8. Logo ${form.product} — coin inférieur droit\n9. Export : ${form.format.split(' ')[0]} PNG 300dpi + JPG web`,
+    };
+  };
 
   const generateLocal = async () => {
     if (!form.subject.trim()) { showToast('Entrez un sujet'); return; }
@@ -73,6 +81,8 @@ export default function VisualLab() {
         produit: form.product,
         hook_visuel: generated.hookVisual,
         prompt_principal: generated.mainPrompt,
+        prompt_chatgpt: generated.promptChatgpt,
+        prompt_nano_banana: generated.promptNanoBanana,
         variante_a: generated.variantA,
         variante_b: generated.variantB,
         variante_c: generated.variantC,
@@ -105,6 +115,8 @@ export default function VisualLab() {
         setResult({
           hookVisual: vp.hook_visuel || '',
           mainPrompt: vp.prompt_principal || '',
+          promptChatgpt: vp.prompt_chatgpt || vp.prompt_principal || '',
+          promptNanoBanana: vp.prompt_nano_banana || vp.prompt_principal || '',
           variantA: vp.variante_a || '',
           variantB: vp.variante_b || '',
           variantC: vp.variante_c || '',
@@ -136,6 +148,8 @@ export default function VisualLab() {
     return {
       hookVisual: last.hook_visuel || '',
       mainPrompt: last.prompt_principal || '',
+      promptChatgpt: last.prompt_chatgpt || last.prompt_principal || '',
+      promptNanoBanana: last.prompt_nano_banana || last.prompt_principal || '',
       variantA: last.variante_a || '',
       variantB: last.variante_b || '',
       variantC: last.variante_c || '',
@@ -243,7 +257,8 @@ export default function VisualLab() {
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {[
-                { label: 'Prompt principal', content: displayResult.mainPrompt },
+                { label: 'Prompt ChatGPT (DALL-E / MJ v6)', content: displayResult.promptChatgpt },
+                { label: 'Prompt Nano Banana Pro (SD/FLUX)', content: displayResult.promptNanoBanana },
                 { label: 'Variante A', content: displayResult.variantA },
                 { label: 'Variante B', content: displayResult.variantB },
                 { label: 'Variante C', content: displayResult.variantC },
