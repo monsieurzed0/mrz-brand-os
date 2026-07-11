@@ -18,7 +18,7 @@ const TABS = [
 export default function FinanceReports() {
   const [tab, setTab] = useState('balance');
   const { data: balance } = useApiQuery(api.getBalanceSheet, []);
-  const { data: income } = useApiQuery(api.getIncomeStatement, {});
+  const { data: income } = useApiQuery(api.getIncomeStatement, []);
   const { data: ledger } = useApiQuery(api.getGeneralLedger, []);
   const { data: trial } = useApiQuery(api.getTrialBalance, []);
 
