@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Zap, Video, Type, Image, Copy, Sparkles, FileText, Palette, Check } from 'lucide-react';
+import { useMemo, useState, useEffect } from 'react';
+import { Zap, Video, Type, Image, Copy, Sparkles, FileText, Palette, Check, RefreshCw, Trash2 } from 'lucide-react';
 
 import Topbar from '@/components/Topbar';
 import SectionCard from '@/components/SectionCard';
@@ -15,6 +15,22 @@ interface GeneratedFormat {
   content: string;
   description: string;
   status: 'draft' | 'sent_script' | 'sent_visual' | string;
+}
+
+const LS_LAST_IDEA = 'mrz-content-engine-last-idea';
+const lsKey = (ideaId: string) => `mrz-content-engine-${ideaId}`;
+
+function loadGenerated(ideaId: string): GeneratedFormat[] | null {
+  try {
+    const raw = localStorage.getItem(lsKey(ideaId));
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function saveGenerated(ideaId: string, data: GeneratedFormat[]) {
+  try {
+    localStorage.setItem(lsKey(ideaId), JSON.stringify(data));
+  } catch { /* ignore */ }
 }
 
 function mapFormatToPlatform(format: string): string {
@@ -39,15 +55,29 @@ export default function ContentEngine() {
     []
   );
 
-  const { data: outputsData, loading: loadingOutputs, error: outputsError } = useApiQuery(
-    api.getContentEngineOutputs,
-    []
-  );
+  // États persistés en localStorage
+  const [selectedIdeaId, setSelectedIdeaId] = useState(() => {
+    try { return localStorage.getItem(LS_LAST_IDEA) || ''; } catch { return ''; }
+  });
 
-  const [selectedIdeaId, setSelectedIdeaId] = useState('');
-  const [generated, setGenerated] = useState<GeneratedFormat[]>([]);
-  const [activeCategory, setActiveCategory] = useState<'video' | 'text' | 'visual' | null>('video');
+  const [generated, setGenerated] = useState<GeneratedFormat[]>(() => {
+    const last = localStorage.getItem(LS_LAST_IDEA);
+    if (last) return loadGenerated(last) || [];
+    return [];
+  });
+
+  const [activeCategory, setActiveCategory] = useState<'video' | 'text' | 'visual' | null>(() => {
+    const last = localStorage.getItem(LS_LAST_IDEA);
+    if (last) {
+      const saved = loadGenerated(last);
+      if (saved && saved.length > 0) return saved[0].category;
+    }
+    return 'video';
+  });
+
   const [sendingIds, setSendingIds] = useState<Set<string>>(new Set());
+  const [syncing, setSyncing] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   const readyIdeas = useMemo(() => {
     const safe = Array.isArray(contentIdeasData) ? contentIdeasData : [];
@@ -69,126 +99,146 @@ export default function ContentEngine() {
 
   const selectedIdea = readyIdeas.find((i) => i.id === selectedIdeaId);
 
+  // Sauvegarder à chaque changement
+  useEffect(() => {
+    if (selectedIdeaId) {
+      localStorage.setItem(LS_LAST_IDEA, selectedIdeaId);
+      saveGenerated(selectedIdeaId, generated);
+    } else {
+      localStorage.removeItem(LS_LAST_IDEA);
+    }
+  }, [generated, selectedIdeaId]);
+
+  const handleSelectIdea = (newId: string) => {
+    setSelectedIdeaId(newId);
+    if (newId) {
+      const saved = loadGenerated(newId);
+      if (saved) {
+        setGenerated(saved);
+        setActiveCategory(saved[0]?.category || 'video');
+      } else {
+        setGenerated([]);
+        setActiveCategory('video');
+      }
+    } else {
+      setGenerated([]);
+      setActiveCategory('video');
+      localStorage.removeItem(LS_LAST_IDEA);
+    }
+  };
+
   const generate = async () => {
     if (!selectedIdea) {
       showToast('Sélectionnez une idée');
       return;
     }
 
-    const existingOutputs = (Array.isArray(outputsData) ? outputsData : [])
-      .filter((item: any) => item.content_idea_id === selectedIdea.id && item.status !== 'sent_script' && item.status !== 'sent_visual')
-      .map((item: any) => ({
-        id: item.id,
-        category: ['video', 'text', 'visual'].includes(item.output_type) ? item.output_type : 'text',
-        format: item.output_label || 'Format',
-        content: item.contenu || '',
-        description: mapDescription(item.output_type, item.output_label || 'Format'),
-        status: item.status || 'draft',
-      })) as GeneratedFormat[];
-
-    if (existingOutputs.length > 0) {
-      setGenerated(existingOutputs);
-      setActiveCategory(existingOutputs[0].category);
-      showToast(`${existingOutputs.length} formats chargés depuis D1`);
+    // Si cache local existe, on restaure sans appel API
+    const cached = loadGenerated(selectedIdea.id);
+    if (cached && cached.length > 0) {
+      setGenerated(cached);
+      setActiveCategory(cached[0]?.category || 'video');
+      showToast(`${cached.length} formats restaurés depuis le cache local`);
       return;
     }
 
-    const s = selectedIdea;
-
-    const localOutputs: Omit<GeneratedFormat, 'id' | 'status'>[] = [
-      {
-        category: 'video',
-        format: 'TikTok',
-        description: 'Vidéo courte format vertical',
-        content: `Hook (3s) : "${s.subject.split(' ').slice(0, 6).join(' ')}..."\nDéveloppement (${Math.max(s.duration - 10, 20)}s) : Angle ${s.angle} pour ${s.target}\nCTA (5s) : ${s.cta}`,
-      },
-      {
-        category: 'video',
-        format: 'YouTube Shorts',
-        description: 'Short vertical optimisé SEO',
-        content: `Titre accrocheur : ${s.subject}\nIntro rapide + hook visuel\nCorps : ${s.angle} — valeur pour ${s.target}\nOutro : ${s.cta}\nDescription optimisée SEO`,
-      },
-      {
-        category: 'video',
-        format: 'Instagram Reel',
-        description: 'Reel avec cover premium',
-        content: `Cover : titre typographié premium\nHook visuel 2s\nContenu : ${s.angle} — ${s.subject}\nTransition : signature Mr Z Brand\nCTA : ${s.cta}`,
-      },
-      {
-        category: 'video',
-        format: 'Vidéo LinkedIn',
-        description: 'Format natif professionnel',
-        content: `Format natif carré 1:1\nSous-titres intégrés\nTon professionnel — angle "${s.angle}"\nSujet : ${s.subject}\nCTA : ${s.cta}`,
-      },
-      {
-        category: 'text',
-        format: 'Post LinkedIn',
-        description: 'Article court professionnel',
-        content: `${s.subject}.\n\nLa plupart des gens pensent que c'est simple.\nMais voici ce que ${s.target} ignorent souvent :\n\n→ [Point 1 basé sur "${s.angle}"]\n→ [Point 2]\n→ [Point 3]\n\n${s.cta}\n\n#MrZBrand #${s.product.replace(/\s/g, '')} #Branding`,
-      },
-      {
-        category: 'text',
-        format: 'Post Facebook',
-        description: 'Publication engageante',
-        content: `${s.subject}\n\nSi tu es ${s.target.toLowerCase()}, ce message est pour toi.\n\n${s.angle} : [développement]\n\n${s.cta}`,
-      },
-      {
-        category: 'text',
-        format: 'Caption Instagram',
-        description: 'Légende storytelling',
-        content: `${s.subject}\n\n${s.angle} pour ${s.target}.\n\n${s.cta}\n\n#MrZBrand #Premium #Branding #Design`,
-      },
-      {
-        category: 'text',
-        format: 'Caption TikTok',
-        description: 'Texte court + hashtags',
-        content: `${s.subject} ${s.cta} #MrZBrand #${s.platform.replace(/\s/g, '')}`,
-      },
-      {
-        category: 'text',
-        format: 'Description Shorts',
-        description: 'Description YouTube',
-        content: `${s.subject} — ${s.angle} pour ${s.target}\n\n${s.cta}\n\n#Shorts #MrZBrand`,
-      },
-      {
-        category: 'text',
-        format: 'Hook textuel',
-        description: 'Accroche copywriting',
-        content: `"${s.subject.split(' ').slice(0, 8).join(' ')}... et si tout ce que tu savais était faux ?"`,
-      },
-      {
-        category: 'visual',
-        format: 'Prompt visuel premium',
-        description: 'Prompt image premium',
-        content: `Cinematic brand visual, ${s.subject}, premium dark aesthetic, copper and charcoal tones, editorial composition, ${s.product} branding, professional lighting, depth of field, no text overlay`,
-      },
-      {
-        category: 'visual',
-        format: 'Hook visuel',
-        description: "Typographie d'accroche",
-        content: `Bold typography on dark background: "${s.subject.split(' ').slice(0, 5).join(' ')}" in Raleway Bold, copper accent color #D67A2C, minimal composition`,
-      },
-      {
-        category: 'visual',
-        format: 'Concept carrousel',
-        description: 'Structure slides Instagram',
-        content: `Slide 1: Hook — "${s.subject}"\nSlide 2: Le problème\nSlide 3: La réalité\nSlide 4: La solution (${s.angle})\nSlide 5: CTA — ${s.cta}\nStyle: Fond sombre, typo Raleway, accents cuivrés`,
-      },
-      {
-        category: 'visual',
-        format: 'Concept post statique',
-        description: 'Design single post',
-        content: `Visual card premium\nTitre : ${s.subject}\nSous-titre : ${s.angle}\nLogo ${s.product}\nPalette : noir charbon + cuivre\nFormat : 1080x1350`,
-      },
-      {
-        category: 'visual',
-        format: 'Note Photoshop',
-        description: 'Guide de composition',
-        content: `Calques :\n1. Fond #0D0D10\n2. Texture hero-bg.jpg à 5% opacité\n3. Titre en Raleway Bold #F0EDE8\n4. Accent line #D67A2C\n5. Logo ${s.product}\n6. CTA zone en bas\nExport : 1080x1350 PNG + 1920x1080 pour LinkedIn`,
-      },
-    ];
-
+    setGenerating(true);
     try {
+      const s = selectedIdea;
+
+      const localOutputs: Omit<GeneratedFormat, 'id' | 'status'>[] = [
+        {
+          category: 'video',
+          format: 'TikTok',
+          description: 'Vidéo courte format vertical',
+          content: `Hook (3s) : "${s.subject.split(' ').slice(0, 6).join(' ')}..."\nDéveloppement (${Math.max(s.duration - 10, 20)}s) : Angle ${s.angle} pour ${s.target}\nCTA (5s) : ${s.cta}`,
+        },
+        {
+          category: 'video',
+          format: 'YouTube Shorts',
+          description: 'Short vertical optimisé SEO',
+          content: `Titre accrocheur : ${s.subject}\nIntro rapide + hook visuel\nCorps : ${s.angle} — valeur pour ${s.target}\nOutro : ${s.cta}\nDescription optimisée SEO`,
+        },
+        {
+          category: 'video',
+          format: 'Instagram Reel',
+          description: 'Reel avec cover premium',
+          content: `Cover : titre typographié premium\nHook visuel 2s\nContenu : ${s.angle} — ${s.subject}\nTransition : signature Mr Z Brand\nCTA : ${s.cta}`,
+        },
+        {
+          category: 'video',
+          format: 'Vidéo LinkedIn',
+          description: 'Format natif professionnel',
+          content: `Format natif carré 1:1\nSous-titres intégrés\nTon professionnel — angle "${s.angle}"\nSujet : ${s.subject}\nCTA : ${s.cta}`,
+        },
+        {
+          category: 'text',
+          format: 'Post LinkedIn',
+          description: 'Article court professionnel',
+          content: `${s.subject}.\n\nLa plupart des gens pensent que c'est simple.\nMais voici ce que ${s.target} ignorent souvent :\n\n→ [Point 1 basé sur "${s.angle}"]\n→ [Point 2]\n→ [Point 3]\n\n${s.cta}\n\n#MrZBrand #${s.product.replace(/\s/g, '')} #Branding`,
+        },
+        {
+          category: 'text',
+          format: 'Post Facebook',
+          description: 'Publication engageante',
+          content: `${s.subject}\n\nSi tu es ${s.target.toLowerCase()}, ce message est pour toi.\n\n${s.angle} : [développement]\n\n${s.cta}`,
+        },
+        {
+          category: 'text',
+          format: 'Caption Instagram',
+          description: 'Légende storytelling',
+          content: `${s.subject}\n\n${s.angle} pour ${s.target}.\n\n${s.cta}\n\n#MrZBrand #Premium #Branding #Design`,
+        },
+        {
+          category: 'text',
+          format: 'Caption TikTok',
+          description: 'Texte court + hashtags',
+          content: `${s.subject} ${s.cta} #MrZBrand #${s.platform.replace(/\s/g, '')}`,
+        },
+        {
+          category: 'text',
+          format: 'Description Shorts',
+          description: 'Description YouTube',
+          content: `${s.subject} — ${s.angle} pour ${s.target}\n\n${s.cta}\n\n#Shorts #MrZBrand`,
+        },
+        {
+          category: 'text',
+          format: 'Hook textuel',
+          description: 'Accroche copywriting',
+          content: `"${s.subject.split(' ').slice(0, 8).join(' ')}... et si tout ce que tu savais était faux ?"`,
+        },
+        {
+          category: 'visual',
+          format: 'Prompt visuel premium',
+          description: 'Prompt image premium',
+          content: `Cinematic brand visual, ${s.subject}, premium dark aesthetic, copper and charcoal tones, editorial composition, ${s.product} branding, professional lighting, depth of field, no text overlay`,
+        },
+        {
+          category: 'visual',
+          format: 'Hook visuel',
+          description: "Typographie d'accroche",
+          content: `Bold typography on dark background: "${s.subject.split(' ').slice(0, 5).join(' ')}" in Raleway Bold, copper accent color #D67A2C, minimal composition`,
+        },
+        {
+          category: 'visual',
+          format: 'Concept carrousel',
+          description: 'Structure slides Instagram',
+          content: `Slide 1: Hook — "${s.subject}"\nSlide 2: Le problème\nSlide 3: La réalité\nSlide 4: La solution (${s.angle})\nSlide 5: CTA — ${s.cta}\nStyle: Fond sombre, typo Raleway, accents cuivrés`,
+        },
+        {
+          category: 'visual',
+          format: 'Concept post statique',
+          description: 'Design single post',
+          content: `Visual card premium\nTitre : ${s.subject}\nSous-titre : ${s.angle}\nLogo ${s.product}\nPalette : noir charbon + cuivre\nFormat : 1080x1350`,
+        },
+        {
+          category: 'visual',
+          format: 'Note Photoshop',
+          description: 'Guide de composition',
+          content: `Calques :\n1. Fond #0D0D10\n2. Texture hero-bg.jpg à 5% opacité\n3. Titre en Raleway Bold #F0EDE8\n4. Accent line #D67A2C\n5. Logo ${s.product}\n6. CTA zone en bas\nExport : 1080x1350 PNG + 1920x1080 pour LinkedIn`,
+        },
+      ];
+
       const saved: GeneratedFormat[] = [];
       for (const item of localOutputs) {
         const result: any = await api.createContentEngineOutput({
@@ -201,11 +251,15 @@ export default function ContentEngine() {
         });
         saved.push({ ...item, id: result.id, status: 'draft' });
       }
+
       setGenerated(saved);
       setActiveCategory('video');
+      saveGenerated(selectedIdea.id, saved);
       showToast(`${saved.length} formats générés et enregistrés`);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Erreur lors de la génération');
+    } finally {
+      setGenerating(false);
     }
   };
 
@@ -215,7 +269,48 @@ export default function ContentEngine() {
   };
 
   /* ------------------------------------------------------------------ */
-  /*  Envoyer vers Script Room — l'item disparaît localement              */
+  /*  Synchronisation manuelle depuis le serveur                          */
+  /* ------------------------------------------------------------------ */
+  const syncFromServer = async () => {
+    if (!selectedIdeaId) {
+      showToast('Sélectionnez une idée d\'abord');
+      return;
+    }
+    setSyncing(true);
+    try {
+      const outputs = await api.getContentEngineOutputs();
+      const relevant = outputs
+        .filter((item: any) => item.content_idea_id === selectedIdeaId)
+        .filter((item: any) => item.status !== 'sent_script' && item.status !== 'sent_visual')
+        .map((item: any) => ({
+          id: item.id,
+          category: ['video', 'text', 'visual'].includes(item.output_type) ? item.output_type : 'text',
+          format: item.output_label || 'Format',
+          content: item.contenu || '',
+          description: mapDescription(item.output_type, item.output_label || 'Format'),
+          status: item.status || 'draft',
+        })) as GeneratedFormat[];
+
+      setGenerated(relevant);
+      saveGenerated(selectedIdeaId, relevant);
+      if (relevant.length > 0) setActiveCategory(relevant[0].category);
+      showToast(`${relevant.length} formats synchronisés depuis le serveur`);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Erreur de synchronisation');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const clearCache = () => {
+    if (!selectedIdeaId) return;
+    localStorage.removeItem(lsKey(selectedIdeaId));
+    setGenerated([]);
+    showToast('Cache local vidé pour cette idée');
+  };
+
+  /* ------------------------------------------------------------------ */
+  /*  Envoyer vers Script Room — l'item disparaît localement               */
   /* ------------------------------------------------------------------ */
   const sendToScriptRoom = async (item: GeneratedFormat) => {
     if (!selectedIdea) {
@@ -233,7 +328,11 @@ export default function ContentEngine() {
         platform_override: mapFormatToPlatform(item.format),
       });
 
-      setGenerated(prev => prev.filter(g => g.id !== item.id));
+      setGenerated(prev => {
+        const next = prev.filter(g => g.id !== item.id);
+        saveGenerated(selectedIdea.id, next);
+        return next;
+      });
       showToast(`Format "${item.format}" envoyé à Script Room`);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Erreur envoi Script Room');
@@ -246,7 +345,7 @@ export default function ContentEngine() {
   };
 
   /* ------------------------------------------------------------------ */
-  /*  Envoyer vers Visual Lab — l'item disparaît localement               */
+  /*  Envoyer vers Visual Lab — l'item disparaît localement                */
   /* ------------------------------------------------------------------ */
   const sendToVisualLab = async (item: GeneratedFormat) => {
     if (!selectedIdea) {
@@ -269,7 +368,11 @@ export default function ContentEngine() {
         status: 'draft',
       });
 
-      setGenerated(prev => prev.filter(g => g.id !== item.id));
+      setGenerated(prev => {
+        const next = prev.filter(g => g.id !== item.id);
+        saveGenerated(selectedIdea.id, next);
+        return next;
+      });
       showToast(`Format "${item.format}" envoyé à Visual Lab`);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Erreur envoi Visual Lab');
@@ -320,7 +423,7 @@ export default function ContentEngine() {
             </div>
             <div>
               <h2 className="text-lg font-bold text-ivory">Content Engine</h2>
-              <p className="text-xs text-subtle">Générez plusieurs formats depuis une seule idée</p>
+              <p className="text-xs text-subtle">Générez plusieurs formats depuis une seule idée — persistance locale</p>
             </div>
           </div>
 
@@ -332,8 +435,6 @@ export default function ContentEngine() {
 
         {loadingIdeas ? <div className="text-sm text-subtle">Chargement des idées...</div> : null}
         {ideasError ? <div className="text-sm text-red-400">Erreur idées : {ideasError}</div> : null}
-        {loadingOutputs ? <div className="text-sm text-subtle">Chargement des formats...</div> : null}
-        {outputsError ? <div className="text-sm text-red-400">Erreur outputs : {outputsError}</div> : null}
 
         {/* Idea selector */}
         <SectionCard>
@@ -344,10 +445,7 @@ export default function ContentEngine() {
               </label>
               <select
                 value={selectedIdeaId}
-                onChange={(e) => {
-                  setSelectedIdeaId(e.target.value);
-                  setGenerated([]);
-                }}
+                onChange={(e) => handleSelectIdea(e.target.value)}
                 className="w-full bg-deep border border-exec/15 rounded-xl px-4 py-3 text-sm text-ivory focus:outline-none focus:border-copper/30 transition"
               >
                 <option value="">— Sélectionnez une idée à transformer —</option>
@@ -359,13 +457,36 @@ export default function ContentEngine() {
               </select>
             </div>
 
-            <button
-              onClick={generate}
-              disabled={!selectedIdeaId}
-              className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-copper text-dark text-sm font-bold hover:bg-copper-light transition disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-            >
-              <Zap size={16} /> Générer tous les formats
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={generate}
+                disabled={!selectedIdeaId || generating}
+                className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-copper text-dark text-sm font-bold hover:bg-copper-light transition disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+              >
+                {generating ? <Sparkles size={16} className="animate-spin" /> : <Zap size={16} />}
+                {generating ? 'Génération...' : generated.length > 0 ? 'Régénérer' : 'Générer tous les formats'}
+              </button>
+
+              <button
+                onClick={syncFromServer}
+                disabled={syncing || !selectedIdeaId}
+                className="flex items-center gap-2 px-4 py-3 rounded-xl bg-carbon border border-exec/15 text-muted text-xs font-semibold hover:border-copper/30 transition disabled:opacity-50"
+                title="Synchroniser depuis le serveur"
+              >
+                <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
+                Sync
+              </button>
+
+              <button
+                onClick={clearCache}
+                disabled={!selectedIdeaId || generated.length === 0}
+                className="flex items-center gap-2 px-4 py-3 rounded-xl bg-carbon border border-exec/15 text-muted text-xs font-semibold hover:border-red-500/30 hover:text-red-400 transition disabled:opacity-50"
+                title="Vider le cache local"
+              >
+                <Trash2 size={14} />
+                Vider
+              </button>
+            </div>
           </div>
 
           {selectedIdea && (
@@ -387,6 +508,16 @@ export default function ContentEngine() {
                   <span className="text-subtle font-semibold">CTA</span>
                   <p className="text-muted mt-0.5">{selectedIdea.cta}</p>
                 </div>
+              </div>
+              <div className="mt-3 flex items-center gap-2 text-[10px] text-subtle">
+                <span className="px-2 py-1 rounded bg-carbon border border-exec/10">
+                  {generated.length} format{generated.length > 1 ? 's' : ''} en cache
+                </span>
+                {generated.length > 0 && (
+                  <span className="px-2 py-1 rounded bg-carbon border border-exec/10">
+                    {generated.filter(g => g.category === 'video').length} vidéo · {generated.filter(g => g.category === 'text').length} texte · {generated.filter(g => g.category === 'visual').length} visuel
+                  </span>
+                )}
               </div>
             </div>
           )}
@@ -499,6 +630,7 @@ export default function ContentEngine() {
             <p className="text-sm text-subtle max-w-md mx-auto">
               Sélectionnez une idée ci-dessus et cliquez sur "Générer tous les formats" pour créer
               automatiquement des scripts vidéo, posts texte et prompts visuels.
+              Les données restent en cache local même si vous quittez la page.
             </p>
 
             <div className="flex justify-center gap-6 mt-6">
