@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Users, Plus, Target, Flame, Thermometer, Snowflake, Loader2, Copy } from 'lucide-react';
+import { Users, Plus, Target, Flame, Thermometer, Snowflake, Loader2, Copy, UserPlus, FileText } from 'lucide-react';
 import Topbar from '@/components/Topbar';
 import SectionCard from '@/components/SectionCard';
 import StatusBadge from '@/components/StatusBadge';
@@ -157,6 +157,19 @@ export default function LeadDesk() {
     }
   };
 
+  const convertToClient = async () => {
+    if (!selected) { showToast('Sélectionnez un lead'); return; }
+    setProcessing('convert');
+    try {
+      const res: any = await api.convertLeadToClient(selected.id);
+      showToast(res.message || 'Client créé');
+      const fresh = await api.getLeads();
+      setLeadsData(fresh);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Erreur conversion');
+    } finally { setProcessing(null); }
+  };
+
   const copy = (text: string) => {
     navigator.clipboard.writeText(text);
     showToast('Copié');
@@ -304,6 +317,13 @@ export default function LeadDesk() {
                       {processing === 'score' ? <Loader2 size={10} className="animate-spin inline mr-1" /> : null}
                       Scorer
                     </button>
+                    <button onClick={convertToClient} disabled={processing === 'convert'} className="px-3 py-1.5 rounded-lg bg-emerald-900/20 border border-emerald-800/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-900/30 transition disabled:opacity-50">
+                      {processing === 'convert' ? <Loader2 size={10} className="animate-spin inline mr-1" /> : <UserPlus size={10} className="inline mr-1" />}
+                      Convertir en client
+                    </button>
+                    <a href={`/finance/quotes?client=${selected.id}`} className="px-3 py-1.5 rounded-lg bg-copper/15 border border-copper/30 text-copper-light text-xs font-semibold hover:bg-copper/25 transition inline-flex items-center gap-1">
+                      <FileText size={10} /> Créer un devis
+                    </a>
                     <select value={selected.status} onChange={(e) => handleStatusChange(selected.id, e.target.value as LeadStatus)} className="bg-deep border border-exec/15 rounded-lg px-2 py-1.5 text-xs text-ivory focus:outline-none">
                       {LEAD_STATUSES.map((s) => <option key={s} value={s}>{STATUS_MAP[s]}</option>)}
                     </select>
