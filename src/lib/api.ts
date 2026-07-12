@@ -231,6 +231,26 @@ export type ProofDeliveryResult = AgentRunResult & {
   processed: Array<{ projectId: string; result: any; aiError: string | null }>;
 };
 
+export type AgentChatMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+};
+
+export type AgentChatResult = {
+  ok: boolean;
+  mode?: string;
+  command?: string | null;
+  agent_id: string;
+  routed_agent?: string;
+  label?: string;
+  answer: string;
+  provider?: string;
+  model?: string;
+  latency_ms?: number;
+  estimated_tokens?: number;
+  runId?: string;
+};
+
 export type ChiefOfStaffResult = AgentRunResult & {
   mode: string;
   result: {
@@ -766,6 +786,17 @@ export const api = {
     apiFetch<ProofDeliveryResult>('/api/agents/proof-delivery/run', {
       method: 'POST',
       body: JSON.stringify(payload || {}),
+    }),
+
+  // Agent Chat — commande slash vers un agent ciblé
+  runAgentChat: (payload: {
+    message: string;
+    agent_id?: string;
+    history?: AgentChatMessage[];
+  }) =>
+    apiFetch<AgentChatResult>('/api/agents/chat', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     }),
 
   // ───────────────────────────────────────────────
