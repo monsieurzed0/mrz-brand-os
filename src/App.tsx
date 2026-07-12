@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { StoreProvider } from '@/lib/useStore';
 import Sidebar from '@/components/Sidebar';
@@ -27,10 +28,24 @@ import FinanceClients from '@/pages/FinanceClients';
 import FinanceExpenses from '@/pages/FinanceExpenses';
 
 function Layout() {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarHidden, setSidebarHidden] = useState(false);
+
+  const mainClassName = sidebarHidden
+    ? 'flex-1 min-h-screen transition-all duration-300'
+    : sidebarCollapsed
+      ? 'flex-1 ml-20 min-h-screen transition-all duration-300'
+      : 'flex-1 ml-60 min-h-screen transition-all duration-300';
+
   return (
     <div className="flex min-h-screen bg-dark">
-      <Sidebar />
-      <main className="flex-1 ml-60 min-h-screen">
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        hidden={sidebarHidden}
+        onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
+        onToggleHidden={() => setSidebarHidden((v) => !v)}
+      />
+      <main className={mainClassName}>
         <Routes>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/weekly" element={<Weekly />} />
