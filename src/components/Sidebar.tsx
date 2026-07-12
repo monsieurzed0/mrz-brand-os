@@ -34,6 +34,7 @@ const navItems = [
     items: [
       { to: '/agents', icon: Bot, label: 'Agents' },
       { to: '/brand-memory', icon: BookOpen, label: 'Brand Memory' },
+      { to: '/brand-catalog', icon: FileText, label: 'Catalogue' },
       { to: '/media-center', icon: Globe, label: 'Media Center' },
     ],
   },
