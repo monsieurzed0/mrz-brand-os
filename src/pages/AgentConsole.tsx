@@ -46,6 +46,7 @@ type ChatMessage = {
 
 const CHAT_EXAMPLES = [
   '/cos Que dois-je prioriser demain ?',
+  '/intel Effectue une veille de marché sur les opportunités de branding de ce jour.',
   '/sales Analyse mes leads chauds.',
   '/content Donne-moi 5 angles pour SIGNAL™ by Mr Z.',
   '/finance Résume mes devis et factures ouverts.',
