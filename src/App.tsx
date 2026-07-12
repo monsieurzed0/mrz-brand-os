@@ -14,6 +14,7 @@ import Projects from '@/pages/Projects';
 import ProofBank from '@/pages/ProofBank';
 import AgentConsole from '@/pages/AgentConsole';
 import BrandMemory from '@/pages/BrandMemory';
+import BrandCatalogue from '@/pages/BrandCatalogue';
 import MediaCenter from '@/pages/MediaCenter';
 
 // ── Finance & Administration ──
@@ -42,6 +43,7 @@ function Layout() {
           <Route path="/proof-bank" element={<ProofBank />} />
           <Route path="/agents" element={<AgentConsole />} />
           <Route path="/brand-memory" element={<BrandMemory />} />
+          <Route path="/brand-catalog" element={<BrandCatalogue />} />
           <Route path="/media-center" element={<MediaCenter />} />
 
           {/* Finance & Administration */}
