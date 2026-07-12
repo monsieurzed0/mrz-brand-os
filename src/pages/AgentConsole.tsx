@@ -1,7 +1,7 @@
 import { useState, useMemo, type ReactNode } from 'react';
 import {
   Crown, Radar, Lightbulb, PenTool, Palette, Target, Shield,
-  Play, Bot, Loader2, Filter, ChevronDown, X, Zap, CalendarDays, Radio, FlaskConical, Volume2, VolumeX
+  Play, Bot, Loader2, Filter, ChevronDown, X, Zap, CalendarDays, Radio, FlaskConical, Volume2, VolumeX, MessageSquare, Send, Copy, Terminal
 } from 'lucide-react';
 import Topbar from '@/components/Topbar';
 import SectionCard from '@/components/SectionCard';
@@ -32,6 +32,24 @@ const relations = [
   { from: 'Sales & Lead Ops', to: 'Proof & Delivery', label: 'alimente' },
   { from: 'Market Intel', to: 'Content Strategist', label: 'informe' },
   { from: 'Market Intel', to: 'Sales & Lead Ops', label: 'informe' },
+];
+
+type ChatMessage = {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  agentLabel?: string;
+  provider?: string;
+  estimatedTokens?: number;
+  createdAt: string;
+};
+
+const CHAT_EXAMPLES = [
+  '/cos Que dois-je prioriser demain ?',
+  '/sales Analyse mes leads chauds.',
+  '/content Donne-moi 5 angles pour SIGNAL™ by Mr Z.',
+  '/finance Résume mes devis et factures ouverts.',
+  '/catalogue Quelle offre correspond à un client qui manque de clarté ?',
 ];
 
 /* ------------------------------------------------------------------ */
@@ -81,6 +99,18 @@ export default function AgentConsole() {
   const [simulating, setSimulating] = useState(false);
   const [simLog, setSimLog] = useState<Array<{ step: typeof WEEK_SCENARIO[0]; status: 'pending' | 'running' | 'done' | 'error' }>>([]);
 
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    {
+      id: 'chat-welcome',
+      role: 'assistant',
+      agentLabel: 'Agent Chat',
+      content: 'Tape une commande : /cos, /sales, /content, /script, /prompt, /proof, /finance, /catalogue ou /help. V1 = un agent ciblé par message pour contrôler les tokens.',
+      createdAt: new Date().toISOString(),
+    },
+  ]);
+
   const agentRuns = Array.isArray(runsData) ? runsData : [];
   /* Fusion runs réels + simulés pour le Topbar et les cartes */
   const allAgentRuns = useMemo(() => {
@@ -99,6 +129,67 @@ export default function AgentConsole() {
   /* -------- push network event -------- */
   const emit = (event: Omit<NetworkEvent, 'id' | 'timestamp'>) => {
     setNetworkEvents(prev => [...prev.slice(-30), { ...event, id: uid(), timestamp: Date.now() }]);
+  };
+
+  const sendAgentChat = async () => {
+    const text = chatInput.trim();
+    if (!text || chatLoading) return;
+
+    synth.init();
+    const userMsg: ChatMessage = {
+      id: uid(),
+      role: 'user',
+      content: text,
+      createdAt: new Date().toISOString(),
+    };
+
+    const history = chatMessages
+      .filter((m) => m.id !== 'chat-welcome')
+      .slice(-4)
+      .map((m) => ({ role: m.role, content: m.content }));
+
+    setChatMessages((prev) => [...prev, userMsg]);
+    setChatInput('');
+    setChatLoading(true);
+    emit({ type: 'packet', from: 'backend', to: 'internet', label: `Agent Chat ${text.split(' ')[0] || ''}`, status: 'running' });
+
+    try {
+      const res = await api.runAgentChat({ message: text, history });
+      const assistantMsg: ChatMessage = {
+        id: uid(),
+        role: 'assistant',
+        agentLabel: res.label || res.agent_id || 'Agent Chat',
+        provider: res.provider,
+        estimatedTokens: res.estimated_tokens,
+        content: res.answer || 'Aucune réponse.',
+        createdAt: new Date().toISOString(),
+      };
+      setChatMessages((prev) => [...prev, assistantMsg]);
+      synth.success();
+      emit({ type: 'packet', from: 'internet', to: 'backend', label: res.provider ? `Réponse via ${res.provider}` : 'Réponse locale', status: res.ok === false ? 'error' : 'success' });
+      if (res.ok === false) showToast(res.answer || 'Commande bloquée');
+      const fresh = await api.getAgentRuns();
+      setRunsData(fresh);
+    } catch (err) {
+      const errorText = err instanceof Error ? err.message : 'Erreur Agent Chat';
+      setChatMessages((prev) => [...prev, {
+        id: uid(),
+        role: 'assistant',
+        agentLabel: 'Erreur',
+        content: errorText,
+        createdAt: new Date().toISOString(),
+      }]);
+      synth.error();
+      emit({ type: 'packet', from: 'internet', to: 'backend', label: 'Agent Chat erreur', status: 'error' });
+      showToast(errorText);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const copyChatMessage = async (content: string) => {
+    await navigator.clipboard.writeText(content);
+    showToast('Réponse copiée');
   };
 
   /* ------------------------------------------------------------------ */
@@ -368,6 +459,109 @@ export default function AgentConsole() {
                 {l.status === 'done' && <span className="text-[10px] text-subtle">(sim)</span>}
               </div>
             ))}
+          </div>
+        </SectionCard>
+
+        {/* Agent Chat */}
+        <SectionCard
+          title="Agent Chat"
+          subtitle="Commandes slash — un agent ciblé par message pour maîtriser les tokens"
+          headerRight={
+            <div className="flex items-center gap-2 text-[10px] text-subtle">
+              <Terminal size={12} className="text-copper" />
+              /help
+            </div>
+          }
+        >
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+            <div className="xl:col-span-2 rounded-xl border border-exec/10 bg-deep overflow-hidden">
+              <div className="max-h-[320px] overflow-y-auto p-3 space-y-3">
+                {chatMessages.map((m) => (
+                  <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[88%] rounded-xl border px-3 py-2 ${
+                      m.role === 'user'
+                        ? 'bg-copper/15 border-copper/25 text-ivory'
+                        : 'bg-carbon border-exec/10 text-muted'
+                    }`}>
+                      <div className="flex items-center justify-between gap-3 mb-1">
+                        <span className="text-[10px] uppercase tracking-wider font-bold text-copper-light">
+                          {m.role === 'user' ? 'Mr Z' : (m.agentLabel || 'Agent')}
+                        </span>
+                        {m.role === 'assistant' && m.id !== 'chat-welcome' && (
+                          <button onClick={() => copyChatMessage(m.content)} className="text-subtle hover:text-copper transition" title="Copier">
+                            <Copy size={11} />
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{m.content}</p>
+                      {m.role === 'assistant' && (m.provider || m.estimatedTokens) && (
+                        <div className="mt-2 pt-2 border-t border-exec/10 flex items-center gap-2 text-[10px] text-subtle">
+                          {m.provider && <span>provider: {m.provider}</span>}
+                          {m.estimatedTokens ? <span>~{m.estimatedTokens} tokens</span> : null}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {chatLoading && (
+                  <div className="flex justify-start">
+                    <div className="rounded-xl border border-exec/10 bg-carbon px-3 py-2 text-sm text-subtle flex items-center gap-2">
+                      <Loader2 size={13} className="animate-spin text-copper" />
+                      Agent en réflexion…
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-exec/10 p-3 bg-dark/20">
+                <div className="flex gap-2">
+                  <input
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendAgentChat();
+                      }
+                    }}
+                    placeholder="Ex: /finance Résume mes devis ouverts ou /catalogue quelle offre pour un client pas clair ?"
+                    className="flex-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory placeholder:text-subtle/50 focus:outline-none focus:border-copper/30"
+                  />
+                  <button
+                    onClick={sendAgentChat}
+                    disabled={chatLoading || !chatInput.trim()}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-copper text-dark text-sm font-bold hover:bg-copper-light transition disabled:opacity-50"
+                  >
+                    {chatLoading ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                    Envoyer
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-exec/10 bg-deep p-3">
+              <div className="flex items-center gap-2 mb-3">
+                <MessageSquare size={14} className="text-copper" />
+                <p className="text-xs font-bold text-ivory">Commandes rapides</p>
+              </div>
+              <div className="space-y-2">
+                {CHAT_EXAMPLES.map((ex) => (
+                  <button
+                    key={ex}
+                    onClick={() => setChatInput(ex)}
+                    className="w-full text-left px-3 py-2 rounded-lg bg-carbon border border-exec/10 text-xs text-muted hover:text-copper-light hover:border-copper/25 transition"
+                  >
+                    {ex}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-4 p-3 rounded-lg bg-copper/5 border border-copper/10">
+                <p className="text-[10px] text-copper-light font-bold uppercase tracking-wider mb-1">Budget tokens</p>
+                <p className="text-xs text-subtle leading-relaxed">
+                  V1 appelle un seul agent. La commande /all est bloquée pour éviter 7 appels IA en parallèle.
+                </p>
+              </div>
+            </div>
           </div>
         </SectionCard>
 
