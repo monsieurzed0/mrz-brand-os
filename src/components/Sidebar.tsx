@@ -14,6 +14,7 @@ import {
   Globe,
   RotateCcw,
   FileBarChart,
+  Radar,
   Menu,
   ChevronLeft,
   ChevronRight,
@@ -52,6 +53,7 @@ const navItems = [
     label: 'Système',
     items: [
       { to: '/agents', icon: Bot, label: 'Agents' },
+      { to: '/market-intel', icon: Radar, label: 'Market Intel' },
       { to: '/brand-memory', icon: BookOpen, label: 'Brand Memory' },
       { to: '/brand-catalog', icon: FileText, label: 'Catalogue' },
       { to: '/media-center', icon: Globe, label: 'Media Center' },
