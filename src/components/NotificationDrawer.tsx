@@ -12,18 +12,41 @@ type NotificationDrawerProps = {
 };
 
 function resolveNotificationRoute(item: any) {
+  const id = item.entity_id ? encodeURIComponent(item.entity_id) : '';
   switch (item.entity_type) {
     case 'script':
-      return '/scripts';
+      return id ? `/scripts?id=${id}` : '/scripts';
     case 'lead':
-      return '/leads';
+      return id ? `/leads?id=${id}` : '/leads';
     case 'project':
-      return '/projects';
+      return id ? `/projects?id=${id}` : '/projects';
     case 'proof':
-      return '/proof-bank';
+      return id ? `/proof-bank?id=${id}` : '/proof-bank';
+    case 'content_idea':
+      return id ? `/content?id=${id}` : '/content';
     case 'content_idea_batch':
       return '/content';
+    case 'market_intel':
+    case 'market_intel_batch':
+    case 'agent_chat_market_intel':
+      return id ? `/market-intel?id=${id}` : '/market-intel';
+    case 'client':
+      return id ? `/finance/clients?id=${id}` : '/finance/clients';
+    case 'quote':
+      return id ? `/finance/quotes?id=${id}` : '/finance/quotes';
+    case 'invoice':
+      return id ? `/finance/invoices?id=${id}` : '/finance/invoices';
+    case 'payment':
+      return '/finance/invoices';
+    case 'expense':
+      return id ? `/finance/expenses?id=${id}` : '/finance/expenses';
+    case 'catalog':
+    case 'brand_catalog':
+      return id ? `/brand-catalog?id=${id}` : '/brand-catalog';
     case 'agent_run':
+    case 'cos_report':
+    case 'lead_batch':
+    case 'proof_batch':
       return '/agents';
     default:
       return '/dashboard';
