@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Users, Plus, Target, Flame, Thermometer, Snowflake, Loader2, Copy, UserPlus, FileText } from 'lucide-react';
 import Topbar from '@/components/Topbar';
 import SectionCard from '@/components/SectionCard';
@@ -49,6 +50,7 @@ function levelToDb(value?: 'cold' | 'warm' | 'hot') {
 
 export default function LeadDesk() {
   const { showToast } = useStore();
+  const navigate = useNavigate();
   const { data: leadsData, loading, error, setData: setLeadsData } = useApiQuery(api.getLeads, []);
   const [showForm, setShowForm] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -165,9 +167,29 @@ export default function LeadDesk() {
       showToast(res.message || 'Client créé');
       const fresh = await api.getLeads();
       setLeadsData(fresh);
+      return res.clientId as string;
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Erreur conversion');
+      return null;
     } finally { setProcessing(null); }
+  };
+
+  const createQuoteForSelected = async () => {
+    if (!selected) { showToast('Sélectionnez un lead'); return; }
+    setProcessing('quote');
+    try {
+      const res: any = await api.convertLeadToClient(selected.id);
+      const clientId = res.clientId;
+      if (!clientId) throw new Error('Client introuvable après conversion');
+      showToast(res.message || 'Client prêt pour devis');
+      const fresh = await api.getLeads();
+      setLeadsData(fresh);
+      navigate(`/finance/quotes?client=${encodeURIComponent(clientId)}`);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Erreur création devis');
+    } finally {
+      setProcessing(null);
+    }
   };
 
   const copy = (text: string) => {
@@ -321,9 +343,10 @@ export default function LeadDesk() {
                       {processing === 'convert' ? <Loader2 size={10} className="animate-spin inline mr-1" /> : <UserPlus size={10} className="inline mr-1" />}
                       Convertir en client
                     </button>
-                    <a href={`/finance/quotes?client=${selected.id}`} className="px-3 py-1.5 rounded-lg bg-copper/15 border border-copper/30 text-copper-light text-xs font-semibold hover:bg-copper/25 transition inline-flex items-center gap-1">
-                      <FileText size={10} /> Créer un devis
-                    </a>
+                    <button onClick={createQuoteForSelected} disabled={processing === 'quote'} className="px-3 py-1.5 rounded-lg bg-copper/15 border border-copper/30 text-copper-light text-xs font-semibold hover:bg-copper/25 transition inline-flex items-center gap-1 disabled:opacity-50">
+                      {processing === 'quote' ? <Loader2 size={10} className="animate-spin" /> : <FileText size={10} />}
+                      Créer un devis
+                    </button>
                     <select value={selected.status} onChange={(e) => handleStatusChange(selected.id, e.target.value as LeadStatus)} className="bg-deep border border-exec/15 rounded-lg px-2 py-1.5 text-xs text-ivory focus:outline-none">
                       {LEAD_STATUSES.map((s) => <option key={s} value={s}>{STATUS_MAP[s]}</option>)}
                     </select>
