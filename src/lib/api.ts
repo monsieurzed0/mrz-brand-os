@@ -60,6 +60,8 @@ export type SearchResult = {
   type: string;
   status?: string;
   module: string;
+  subtitle?: string;
+  route?: string;
 };
 
 export type ContentIdea = {
@@ -185,11 +187,12 @@ export type AgentRunRecord = {
   input_summary?: string;
   output_summary?: string;
   run_status?: string;
-  error_text?: string;
+  error_text?: string | null;
   provider?: string;
   model?: string;
   latency_ms?: number;
   created_at?: string;
+  updated_at?: string;
 };
 
 export type AgentRunResult = {
@@ -248,6 +251,7 @@ export type AgentChatResult = {
   model?: string;
   latency_ms?: number;
   estimated_tokens?: number;
+  persisted_intel_count?: number;
   runId?: string;
 };
 
@@ -860,7 +864,7 @@ export const api = {
     apiFetch(`/api/invoices/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteInvoice: (id: string) =>
     apiFetch(`/api/invoices/${id}`, { method: 'DELETE' }),
-  recordPayment: (invoiceId: string, payload: { amount: number; currency?: string; payment_method?: string; payment_method_detail?: string; payment_date?: string; reference?: string; notes?: string }) =>
+  recordPayment: (invoiceId: string, payload: { amount: number; client_id?: string; currency?: string; payment_method?: string; payment_method_detail?: string; payment_date?: string; reference?: string; notes?: string }) =>
     apiFetch('/api/invoices/' + invoiceId + '/payment', { method: 'POST', body: JSON.stringify({ ...payload, invoice_id: invoiceId }) }),
 
   // Invoice items
