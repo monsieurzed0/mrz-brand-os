@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
-import { FileText, Plus, Loader2, CheckCircle, ArrowRightCircle, Copy } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { FileText, Plus, Loader2, ArrowRightCircle, Copy, Send, CheckCircle } from 'lucide-react';
 import Topbar from '@/components/Topbar';
 import SectionCard from '@/components/SectionCard';
 import FinanceNav from '@/components/FinanceNav';
@@ -9,6 +10,8 @@ import { useStore } from '@/lib/useStore';
 
 export default function FinanceQuotes() {
   const { showToast } = useStore();
+  const [searchParams] = useSearchParams();
+  const clientFromUrl = searchParams.get('client') || '';
   const { data: quotesData, setData: setQuotesData, loading } = useApiQuery(api.getQuotes, []);
   const { data: clientsData } = useApiQuery(api.getClients, []);
   const { data: servicesData } = useApiQuery(api.getServicesCatalog, []);
@@ -17,7 +20,7 @@ export default function FinanceQuotes() {
   const [selectedQuote, setSelectedQuote] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
 
-  const [form, setForm] = useState({ client_id: '', currency: 'XAF', acompte_percent: '0', terms: 'Paiement à 7 jours', notes: '' });
+  const [form, setForm] = useState({ client_id: clientFromUrl, currency: 'XAF', acompte_percent: '0', terms: 'Paiement à 7 jours', notes: '' });
 
   const clients = Array.isArray(clientsData) ? clientsData : [];
   const services = Array.isArray(servicesData) ? servicesData : [];
@@ -28,6 +31,13 @@ export default function FinanceQuotes() {
     clients.forEach((c: any) => (m[c.id] = c.name));
     return m;
   }, [clients]);
+
+  useEffect(() => {
+    if (clientFromUrl && !form.client_id) {
+      setForm((prev) => ({ ...prev, client_id: clientFromUrl }));
+      setShowForm(true);
+    }
+  }, [clientFromUrl, form.client_id]);
 
   const handleAddItem = () => {
     setItems((prev) => [...prev, { description: '', quantity: 1, unit_price: 0, discount_percent: 0, service_id: '' }]);
@@ -50,7 +60,7 @@ export default function FinanceQuotes() {
       showToast('Devis créé');
       setShowForm(false);
       setItems([]);
-      setForm({ client_id: '', currency: 'XAF', acompte_percent: '0', terms: 'Paiement à 7 jours', notes: '' });
+      setForm({ client_id: clientFromUrl || '', currency: 'XAF', acompte_percent: '0', terms: 'Paiement à 7 jours', notes: '' });
       const fresh = await api.getQuotes();
       setQuotesData(fresh);
     } catch (err) {
@@ -68,6 +78,20 @@ export default function FinanceQuotes() {
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Erreur conversion');
     } finally { setProcessing(null); }
+  };
+
+  const updateQuoteStatus = async (id: string, status: string) => {
+    setProcessing(`${id}-${status}`);
+    try {
+      await api.updateQuote(id, { status, accepted_at: status === 'accepted' ? new Date().toISOString() : undefined });
+      showToast(status === 'sent' ? 'Devis marqué envoyé' : status === 'accepted' ? 'Devis accepté' : 'Statut mis à jour');
+      const fresh = await api.getQuotes();
+      setQuotesData(fresh);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Erreur statut devis');
+    } finally {
+      setProcessing(null);
+    }
   };
 
   const copyQuote = (q: any) => {
@@ -175,9 +199,21 @@ export default function FinanceQuotes() {
                   <td className="px-4 py-3 text-xs text-ivory">{(q.total || 0).toLocaleString('fr-FR')} {q.currency}</td>
                   <td className="px-4 py-3 text-xs text-subtle">{q.acompte_percent ? `${q.acompte_percent}%` : '—'}</td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-2">
-                      <button onClick={(e) => { e.stopPropagation(); copyQuote(q); }} className="text-xs text-muted hover:text-copper transition"><Copy size={12} /></button>
-                      {q.status === 'accepted' || q.status === 'sent' ? (
+                    <div className="flex gap-2 flex-wrap">
+                      <button onClick={(e) => { e.stopPropagation(); copyQuote(q); }} className="text-xs text-muted hover:text-copper transition" title="Copier"><Copy size={12} /></button>
+                      {q.status === 'draft' && (
+                        <button onClick={(e) => { e.stopPropagation(); updateQuoteStatus(q.id, 'sent'); }} disabled={processing === `${q.id}-sent`} className="text-xs text-copper hover:text-copper-light flex items-center gap-1 transition disabled:opacity-50">
+                          {processing === `${q.id}-sent` ? <Loader2 size={10} className="animate-spin" /> : <Send size={10} />}
+                          Envoyé
+                        </button>
+                      )}
+                      {(q.status === 'draft' || q.status === 'sent') && (
+                        <button onClick={(e) => { e.stopPropagation(); updateQuoteStatus(q.id, 'accepted'); }} disabled={processing === `${q.id}-accepted`} className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition disabled:opacity-50">
+                          {processing === `${q.id}-accepted` ? <Loader2 size={10} className="animate-spin" /> : <CheckCircle size={10} />}
+                          Accepté
+                        </button>
+                      )}
+                      {(q.status === 'accepted' || q.status === 'sent') ? (
                         <button onClick={(e) => { e.stopPropagation(); convertQuote(q.id); }} disabled={processing === q.id} className="text-xs text-copper hover:text-copper-light flex items-center gap-1 transition disabled:opacity-50">
                           {processing === q.id ? <Loader2 size={10} className="animate-spin" /> : <ArrowRightCircle size={10} />}
                           Convertir
