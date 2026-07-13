@@ -1,75 +1,17 @@
 import type { AppState } from '@/types';
 
-const daysAgo = (d: number) => new Date(Date.now() - d * 86400000).toISOString();
-
+// Production-safe seed.
+// No fake clients, fake proofs, fake revenue, fake testimonials, or fake projects.
+// The OS must be fed only by real data from D1/API or by explicit user input.
 export const mockSeed: AppState = {
-  contentIdeas: [
-    { id: 'ci1', subject: 'Pourquoi le branding africain doit viser le premium', angle: 'Éducatif', target: 'Entrepreneurs africains', product: 'Mr Z Brand', platform: 'LinkedIn', duration: 60, cta: 'Réserve ton audit branding', source: 'Observation marché', status: 'idea_ready', createdAt: daysAgo(2) },
-    { id: 'ci2', subject: 'Les 3 erreurs WhatsApp Business que tout le monde fait', angle: 'Myth-busting', target: 'PME Cameroun', product: 'SIGNAL™ by Mr Z', platform: 'TikTok', duration: 45, cta: 'Découvre SIGNAL™', source: 'Retours clients', status: 'idea_pending', createdAt: daysAgo(1) },
-    { id: 'ci3', subject: 'Comment créer un personal brand qui génère des leads', angle: 'Storytelling', target: 'Freelances', product: 'PROSKILLS FR', platform: 'YouTube Shorts', duration: 60, cta: 'Rejoins PROSKILLS FR', source: 'Tendance LinkedIn', status: 'idea_ready', createdAt: daysAgo(3) },
-    { id: 'ci4', subject: 'Design premium : ce que les marques africaines ratent', angle: 'Opinion', target: 'Directeurs marketing', product: 'Mr Z Brand', platform: 'Instagram Reel', duration: 30, cta: 'Travaillons ensemble', source: 'Analyse concurrence', status: 'script_pending', createdAt: daysAgo(5) },
-    { id: 'ci5', subject: 'Ta stratégie WhatsApp en 90 secondes', angle: 'Tutoriel rapide', target: 'Entrepreneurs', product: 'SIGNAL™ by Mr Z', platform: 'TikTok', duration: 90, cta: 'Active SIGNAL™ maintenant', source: 'FAQ clients', status: 'idea_pending', createdAt: daysAgo(0) },
-    { id: 'ci6', subject: 'Construire une identité visuelle mémorable', angle: 'Behind the scenes', target: 'Startups', product: 'Mr Z Brand', platform: 'Facebook', duration: 60, cta: 'Demande un devis', source: 'Portfolio review', status: 'idea_ready', createdAt: daysAgo(4) },
-  ],
-  scripts: [
-    { id: 'sc1', ideaId: 'ci1', subject: 'Pourquoi le branding africain doit viser le premium', hook: 'Tu crois que le premium est réservé aux marques occidentales ? Erreur.', script: 'Hook : Tu crois que le premium est réservé aux marques occidentales ? Erreur.\n\nLe branding africain a tout pour dominer. Culture riche, identité forte, marché en explosion.\n\nMais trop de marques copient des templates au lieu de construire une vraie identité.\n\nLe premium, ce n\'est pas un prix. C\'est une perception.\n\nEt cette perception se construit avec du design intentionnel, une voix claire, et une stratégie de positionnement.\n\nC\'est exactement ce qu\'on fait chez Mr Z Brand.\n\nCTA : Réserve ton audit branding — lien en bio.', ctaGenerated: 'Réserve ton audit branding — lien en bio', caption: 'Le premium africain n\'est pas un luxe. C\'est une nécessité stratégique. 🎯', angle: 'Éducatif', target: 'Entrepreneurs africains', product: 'Mr Z Brand', platform: 'LinkedIn', status: 'approved', versions: [{ version: 1, content: 'Version initiale du script premium branding.', date: daysAgo(2) }], createdAt: daysAgo(2) },
-    { id: 'sc2', ideaId: 'ci4', subject: 'Design premium : ce que les marques africaines ratent', hook: '90% des marques africaines font cette erreur en design.', script: 'Hook : 90% des marques africaines font cette erreur en design.\n\nElles pensent qu\'un beau logo suffit.\n\nMais un logo sans système visuel, c\'est comme un costume sans coupe.\n\nCe qu\'il faut : une palette, une typographie, des règles de composition, et surtout une intention.\n\nChaque pixel doit raconter qui tu es.\n\nCTA : Travaillons ensemble sur ton identité.', ctaGenerated: 'Travaillons ensemble sur ton identité', caption: 'Un logo ne fait pas une marque. Un système fait une marque.', angle: 'Opinion', target: 'Directeurs marketing', product: 'Mr Z Brand', platform: 'Instagram Reel', status: 'draft', versions: [{ version: 1, content: 'Premier jet du script design.', date: daysAgo(1) }], createdAt: daysAgo(1) },
-    { id: 'sc3', subject: 'SIGNAL™ en action : cas client réel', hook: 'Ce client a doublé ses réponses WhatsApp en 2 semaines.', script: 'Hook : Ce client a doublé ses réponses WhatsApp en 2 semaines.\n\nAvant SIGNAL™, il envoyait des messages génériques. Zéro engagement.\n\nOn a restructuré ses templates, créé un flow de qualification, et posé une stratégie de relance.\n\nRésultat ? Ses prospects répondent, et son taux de conversion a grimpé.\n\nSIGNAL™ by Mr Z, c\'est de la stratégie WhatsApp professionnelle.\n\nCTA : Découvre SIGNAL™ — lien en bio.', ctaGenerated: 'Découvre SIGNAL™ — lien en bio', caption: 'WhatsApp Business sans stratégie = bruit. Avec SIGNAL™ = résultats.', angle: 'Cas client', target: 'PME', product: 'SIGNAL™ by Mr Z', platform: 'TikTok', status: 'ready_review', versions: [{ version: 1, content: 'Script cas client SIGNAL.', date: daysAgo(0) }], createdAt: daysAgo(0) },
-  ],
-  leads: [
-    { id: 'ld1', name: 'Daniel BELLA — DB Excellence Group', source: 'Recommandation', need: 'Refonte identité visuelle complète', level: 'hot', nextAction: 'Envoi proposition commerciale', followupDraft: 'Bonjour Daniel, suite à notre échange, voici notre proposition pour la refonte de l\'identité visuelle de DB Excellence Group...', status: 'lead_proposal', createdAt: daysAgo(3) },
-    { id: 'ld2', name: 'EASPAY — Direction Marketing', source: 'LinkedIn', need: 'Branding et supports de communication', level: 'warm', nextAction: 'Rendez-vous de qualification', followupDraft: '', status: 'lead_meeting', createdAt: daysAgo(7) },
-    { id: 'ld3', name: 'CAPELLI — Responsable com', source: 'Instagram', need: 'Stratégie de contenu premium', level: 'warm', nextAction: 'Envoyer portfolio + cas similaires', followupDraft: '', status: 'lead_qualified', createdAt: daysAgo(5) },
-    { id: 'ld4', name: 'Startup tech Douala', source: 'WhatsApp', need: 'Logo + charte graphique', level: 'cold', nextAction: 'Premier contact à qualifier', followupDraft: '', status: 'lead_new', createdAt: daysAgo(1) },
-    { id: 'ld5', name: 'ROGA — Directeur général', source: 'Événement', need: 'Campagne digitale complète', level: 'hot', nextAction: 'Préparer proposition', followupDraft: 'Bonjour, merci pour notre échange lors de l\'événement. Voici comment nous pourrions collaborer...', status: 'lead_followup', createdAt: daysAgo(4) },
-  ],
-  projects: [
-    { id: 'pj1', client: 'DF Logistics', offer: 'Identité visuelle complète', phase: 'Création maquettes', blockers: '', deliverables: ['Logo', 'Charte graphique', 'Templates documents', 'Supports print'], status: 'project_active', milestones: [{ label: 'Brief validé', done: true }, { label: 'Moodboard approuvé', done: true }, { label: 'Logo finalisé', done: false }, { label: 'Charte livrée', done: false }], createdAt: daysAgo(14) },
-    { id: 'pj2', client: 'Carré des Officiers', offer: 'Branding restaurant premium', phase: 'Livraison finale', blockers: '', deliverables: ['Identité visuelle', 'Menu design', 'Signalétique', 'Packaging'], status: 'project_delivered', milestones: [{ label: 'Concept validé', done: true }, { label: 'Design finalisé', done: true }, { label: 'Fichiers livrés', done: true }], createdAt: daysAgo(30) },
-    { id: 'pj3', client: 'DB Excellence Group', offer: 'Refonte identité + site', phase: 'En attente validation brief', blockers: 'Attente retour client sur brief', deliverables: ['Nouveau logo', 'Site web', 'Supports digitaux'], status: 'project_waiting', milestones: [{ label: 'Brief envoyé', done: true }, { label: 'Brief validé', done: false }, { label: 'Maquettes', done: false }], createdAt: daysAgo(10) },
-    { id: 'pj4', client: 'EASPAY', offer: 'Stratégie de marque', phase: 'Planification', blockers: '', deliverables: ['Audit de marque', 'Positionnement', 'Guidelines'], status: 'project_planned', milestones: [{ label: 'Kick-off', done: false }, { label: 'Audit', done: false }, { label: 'Livraison', done: false }], createdAt: daysAgo(2) },
-  ],
-  agentRuns: [
-    { id: 'ar1', agentId: 'agent-content', agentName: 'Content Strategist', status: 'done', summary: 'Analyse des tendances LinkedIn effectuée. 5 idées de contenu générées pour la semaine.', startedAt: daysAgo(0), completedAt: daysAgo(0) },
-    { id: 'ar2', agentId: 'agent-market', agentName: 'Market Intel', status: 'done', summary: 'Veille concurrentielle terminée. 3 opportunités identifiées sur le marché camerounais.', startedAt: daysAgo(1), completedAt: daysAgo(1) },
-    { id: 'ar3', agentId: 'agent-script', agentName: 'Scriptwriter', status: 'running', summary: 'Génération du script pour "SIGNAL™ en action"...', startedAt: daysAgo(0) },
-    { id: 'ar4', agentId: 'agent-sales', agentName: 'Sales & Lead Ops', status: 'done', summary: 'Qualification des leads entrants. 2 leads chauds identifiés.', startedAt: daysAgo(1), completedAt: daysAgo(1) },
-    { id: 'ar5', agentId: 'agent-chief', agentName: 'Chief of Staff', status: 'done', summary: 'Rapport hebdomadaire généré. Priorités alignées pour la semaine.', startedAt: daysAgo(0), completedAt: daysAgo(0) },
-  ],
-  proofs: [
-    { id: 'pr1', type: 'Livraison projet', projectLinked: 'Carré des Officiers', content: 'Identité visuelle complète livrée — branding restaurant premium avec menu design et signalétique', usage: 'Portfolio, étude de cas', validated: true, createdAt: daysAgo(5) },
-    { id: 'pr2', type: 'Témoignage client', projectLinked: 'DF Logistics', content: 'Collaboration en cours sur l\'identité visuelle — projet avancé et structuré', usage: 'Référence active', validated: false, createdAt: daysAgo(3) },
-    { id: 'pr3', type: 'Résultat mesurable', projectLinked: 'SIGNAL™ by Mr Z', content: 'Structuration de l\'offre WhatsApp Business — framework SIGNAL™ opérationnel', usage: 'Page produit, contenu éducatif', validated: true, createdAt: daysAgo(10) },
-    { id: 'pr4', type: 'Portfolio', projectLinked: 'Mr Z Brand', content: 'Collection de projets branding premium — identités visuelles africaines haut de gamme', usage: 'Behance, site, réseaux', validated: true, createdAt: daysAgo(15) },
-  ],
-  notifications: [
-    { id: 'n1', title: 'Idée prête', message: 'L\'idée "Branding africain premium" est prête à être scriptée.', type: 'info', module: 'content', status: 'unread', createdAt: daysAgo(0) },
-    { id: 'n2', title: 'Script à valider', message: 'Le script "SIGNAL™ en action" attend votre validation.', type: 'warning', module: 'scripts', status: 'unread', createdAt: daysAgo(0) },
-    { id: 'n3', title: 'Lead chaud', message: 'Daniel BELLA — DB Excellence Group est en phase proposition.', type: 'success', module: 'leads', status: 'unread', createdAt: daysAgo(1) },
-    { id: 'n4', title: 'Projet en attente', message: 'DB Excellence Group attend la validation du brief.', type: 'warning', module: 'projects', status: 'unread', createdAt: daysAgo(2) },
-    { id: 'n5', title: 'Agent terminé', message: 'Content Strategist a terminé l\'analyse des tendances.', type: 'success', module: 'agents', status: 'read', createdAt: daysAgo(0) },
-    { id: 'n6', title: 'Agent en cours', message: 'Scriptwriter génère un nouveau script...', type: 'info', module: 'agents', status: 'unread', createdAt: daysAgo(0) },
-  ],
-  weeklyPlans: [
-    { id: 'wp1', weekLabel: 'Semaine du 30 juin 2025', priority1: 'Finaliser proposition DB Excellence Group', priority2: 'Publier 3 contenus LinkedIn + TikTok', priority3: 'Qualifier les 2 leads chauds entrants', mainRisk: 'Retard sur brief DB Excellence — relancer avant mercredi', decisions: ['Lancer SIGNAL™ en contenu this week', 'Prioriser DF Logistics pour livraison'], notes: 'Focus sur la conversion des leads chauds cette semaine. Contenu orienté preuve et cas client.', createdAt: daysAgo(0) },
-  ],
-  brandMemory: [
-    { id: 'bm1', title: 'Identité', content: 'Mr Z Brand est une marque de branding, design et stratégie fondée par Hervé Kevin ZEH, alias Mr Z. Positionnement : Afrique assumée, standard premium. La marque incarne l\'excellence créative africaine à un niveau international.' },
-    { id: 'bm2', title: 'Voix', content: 'Directe, stratégique, premium. Pas de jargon startup. Pas de fausse humilité. Ton affirmé mais pas arrogant. Expertise incarnée. Chaque mot doit porter une intention.' },
-    { id: 'bm3', title: 'Interdits', content: 'Jamais de faux chiffres. Jamais de faux témoignages. Jamais de fausses preuves. Jamais de ton cheap ou générique. Jamais de blue-tech-glow. Jamais d\'esthétique startup cliché.' },
-    { id: 'bm4', title: 'Offres', content: 'Mr Z Brand — Branding, design, stratégie de marque premium.\nSIGNAL™ by Mr Z — Stratégie WhatsApp Business professionnelle.\nPROSKILLS FR — Formation et accompagnement en personal branding et compétences digitales.' },
-    { id: 'bm5', title: 'Preuves autorisées', content: 'Uniquement les réalisations réelles : DF Logistics, Carré des Officiers, DB Excellence Group, EASPAY, CAPELLI, ROGA. Pas d\'invention, pas de gonflement.' },
-    { id: 'bm6', title: 'CTA validés', content: 'Réserve ton audit branding. Découvre SIGNAL™. Rejoins PROSKILLS FR. Travaillons ensemble. Demande un devis.' },
-    { id: 'bm7', title: 'Réseaux', content: 'Facebook, YouTube, Instagram, LinkedIn, TikTok, Behance. Handle principal : @mrzbrand0. WhatsApp : +237 682 722 237.' },
-    { id: 'bm8', title: 'Direction artistique', content: 'Sombre, premium, éditorial. Palette : noir charbon, cuivre, ivoire. Typographie : Raleway. Icônes : Lucide. Aucun bleu, violet, vert néon. Aucun fond blanc pur. Profondeur, matière, architecture.' },
-  ],
-  agents: [
-    { id: 'agent-chief', name: 'Chief of Staff', mission: 'Orchestration générale, rapport hebdomadaire, alignement des priorités', icon: 'Crown', status: 'active', lastRun: daysAgo(0), lastSummary: 'Rapport hebdomadaire généré. Priorités alignées.' },
-    { id: 'agent-market', name: 'Market Intel', mission: 'Veille concurrentielle, analyse marché, détection d\'opportunités', icon: 'Radar', status: 'idle', lastRun: daysAgo(1), lastSummary: '3 opportunités identifiées sur le marché camerounais.' },
-    { id: 'agent-content', name: 'Content Strategist', mission: 'Génération d\'idées, analyse tendances, planification éditoriale', icon: 'Lightbulb', status: 'active', lastRun: daysAgo(0), lastSummary: '5 idées de contenu générées pour la semaine.' },
-    { id: 'agent-script', name: 'Scriptwriter', mission: 'Rédaction de scripts, hooks, captions, CTA', icon: 'PenTool', status: 'active', lastRun: daysAgo(0), lastSummary: 'Génération du script SIGNAL™ en cours...' },
-    { id: 'agent-prompt', name: 'Prompt Engineer', mission: 'Création de prompts visuels, direction artistique IA', icon: 'Palette', status: 'idle', lastRun: daysAgo(2), lastSummary: 'Prompts visuels pour campagne DF Logistics générés.' },
-    { id: 'agent-sales', name: 'Sales & Lead Ops', mission: 'Qualification leads, scoring, préparation relances', icon: 'Target', status: 'active', lastRun: daysAgo(1), lastSummary: '2 leads chauds identifiés et qualifiés.' },
-    { id: 'agent-proof', name: 'Proof & Delivery', mission: 'Suivi livraisons, collecte de preuves, documentation', icon: 'Shield', status: 'idle', lastRun: daysAgo(3), lastSummary: 'Preuve Carré des Officiers validée et archivée.' },
-  ],
+  contentIdeas: [],
+  scripts: [],
+  leads: [],
+  projects: [],
+  agentRuns: [],
+  proofs: [],
+  notifications: [],
+  weeklyPlans: [],
+  brandMemory: [],
+  agents: [],
 };
