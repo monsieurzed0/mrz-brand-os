@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Receipt, Plus, Loader2, CheckCircle, DollarSign } from 'lucide-react';
+import { Receipt, Loader2, CheckCircle, DollarSign } from 'lucide-react';
 import Topbar from '@/components/Topbar';
 import SectionCard from '@/components/SectionCard';
 import FinanceNav from '@/components/FinanceNav';
@@ -13,7 +13,6 @@ export default function FinanceInvoices() {
   const { showToast } = useStore();
   const { data: invoicesData, setData: setInvoicesData, loading } = useApiQuery(api.getInvoices, []);
   const { data: clientsData } = useApiQuery(api.getClients, []);
-  const { data: quotesData } = useApiQuery(api.getQuotes, []);
   const [showPayment, setShowPayment] = useState<string | null>(null);
   const [processing, setProcessing] = useState<string | null>(null);
 
@@ -35,6 +34,7 @@ export default function FinanceInvoices() {
     try {
       await api.recordPayment(invoiceId, {
         amount,
+        client_id: clientId,
         currency: payForm.currency,
         payment_method: payForm.payment_method,
         payment_method_detail: payForm.payment_method_detail,
@@ -97,20 +97,20 @@ export default function FinanceInvoices() {
                   <td className="px-4 py-3">
                     {(inv.status === 'sent' || inv.status === 'partial' || inv.status === 'draft' || inv.status === 'overdue') && (
                       <button onClick={() => { setShowPayment(inv.id); setPayForm({ ...payForm, amount: String(inv.amount_due || inv.total || '') }); }} className="text-xs text-copper hover:text-copper-light flex items-center gap-1 transition">
-                        <DollarSign size={10} /> Payer
+                        <DollarSign size={10} /> Encaisser
                       </button>
                     )}
                   </td>
                 </tr>
               ))}
-              {invoices.length === 0 && !loading && <tr><td colSpan={9} className="px-4 py-6 text-center text-xs text-subtle">Aucune facture</td></tr>}
+              {invoices.length === 0 && !loading && <tr><td colSpan={9} className="px-4 py-6 text-center text-xs text-subtle">Aucune facture client</td></tr>}
             </tbody>
           </table>
         </div>
 
         {/* Modal paiement */}
         {showPayment && (
-          <SectionCard title="Enregistrer un paiement">
+          <SectionCard title="Enregistrer un encaissement client">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="text-xs text-subtle font-semibold">Montant</label>
