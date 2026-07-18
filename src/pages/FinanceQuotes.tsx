@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
-import { Receipt, Loader2, CheckCircle, DollarSign } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { FileText, Plus, Loader2, ArrowRightCircle, Copy, Send, CheckCircle } from 'lucide-react';
 import Topbar from '@/components/Topbar';
 import SectionCard from '@/components/SectionCard';
 import FinanceNav from '@/components/FinanceNav';
@@ -7,19 +8,23 @@ import { api } from '@/lib/api';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { useStore } from '@/lib/useStore';
 
-function formatXAF(n: number) { return (n || 0).toLocaleString('fr-FR') + ' XAF'; }
-
-export default function FinanceInvoices() {
+export default function FinanceQuotes() {
   const { showToast } = useStore();
-  const { data: invoicesData, setData: setInvoicesData, loading } = useApiQuery(api.getInvoices, []);
+  const [searchParams] = useSearchParams();
+  const clientFromUrl = searchParams.get('client') || '';
+  const { data: quotesData, setData: setQuotesData, loading } = useApiQuery(api.getQuotes, []);
   const { data: clientsData } = useApiQuery(api.getClients, []);
-  const [showPayment, setShowPayment] = useState<string | null>(null);
+  const { data: servicesData } = useApiQuery(api.getServicesCatalog, []);
+  const [showForm, setShowForm] = useState(false);
   const [processing, setProcessing] = useState<string | null>(null);
+  const [selectedQuote, setSelectedQuote] = useState<any>(null);
+  const [items, setItems] = useState<any[]>([]);
 
-  const [payForm, setPayForm] = useState({ amount: '', currency: 'XAF', payment_method: 'orange_money', payment_method_detail: '', reference: '', payment_date: new Date().toISOString().slice(0, 10) });
+  const [form, setForm] = useState({ client_id: clientFromUrl, currency: 'XAF', acompte_percent: '0', terms: 'Paiement à 7 jours', notes: '' });
 
   const clients = Array.isArray(clientsData) ? clientsData : [];
-  const invoices = Array.isArray(invoicesData) ? invoicesData : [];
+  const services = Array.isArray(servicesData) ? servicesData : [];
+  const quotes = Array.isArray(quotesData) ? quotesData : [];
 
   const clientMap = useMemo(() => {
     const m: Record<string, string> = {};
@@ -27,145 +32,203 @@ export default function FinanceInvoices() {
     return m;
   }, [clients]);
 
-  const handlePayment = async (invoiceId: string, clientId: string) => {
-    const amount = Number(payForm.amount);
-    if (!amount || amount <= 0) { showToast('Montant invalide'); return; }
-    setProcessing(invoiceId);
+  useEffect(() => {
+    if (clientFromUrl && !form.client_id) {
+      setForm((prev) => ({ ...prev, client_id: clientFromUrl }));
+      setShowForm(true);
+    }
+  }, [clientFromUrl, form.client_id]);
+
+  const handleAddItem = () => {
+    setItems((prev) => [...prev, { description: '', quantity: 1, unit_price: 0, discount_percent: 0, service_id: '' }]);
+  };
+
+  const handleSave = async () => {
+    if (!form.client_id) { showToast('Sélectionnez un client'); return; }
     try {
-      await api.recordPayment(invoiceId, {
-        amount,
-        client_id: clientId,
-        currency: payForm.currency,
-        payment_method: payForm.payment_method,
-        payment_method_detail: payForm.payment_method_detail,
-        reference: payForm.reference,
-        payment_date: payForm.payment_date,
+      const quoteRes: any = await api.createQuote({
+        client_id: form.client_id,
+        currency: form.currency,
+        acompte_percent: Number(form.acompte_percent) || 0,
+        terms: form.terms,
+        notes: form.notes,
       });
-      showToast('Paiement enregistré');
-      setShowPayment(null);
-      setPayForm({ amount: '', currency: 'XAF', payment_method: 'orange_money', payment_method_detail: '', reference: '', payment_date: new Date().toISOString().slice(0, 10) });
-      const fresh = await api.getInvoices();
-      setInvoicesData(fresh);
+      const quoteId = quoteRes.id;
+      for (const item of items) {
+        await api.createQuoteItem({ quote_id: quoteId, ...item });
+      }
+      showToast('Devis créé');
+      setShowForm(false);
+      setItems([]);
+      setForm({ client_id: clientFromUrl || '', currency: 'XAF', acompte_percent: '0', terms: 'Paiement à 7 jours', notes: '' });
+      const fresh = await api.getQuotes();
+      setQuotesData(fresh);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Erreur paiement');
+      showToast(err instanceof Error ? err.message : 'Erreur');
+    }
+  };
+
+  const convertQuote = async (id: string) => {
+    setProcessing(id);
+    try {
+      const res: any = await api.convertQuoteToInvoice(id);
+      showToast(`Devis converti — ${res.acompteNumber || res.invoiceNumber || 'Facture générée'}`);
+      const fresh = await api.getQuotes();
+      setQuotesData(fresh);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Erreur conversion');
     } finally { setProcessing(null); }
+  };
+
+  const updateQuoteStatus = async (id: string, status: string) => {
+    setProcessing(`${id}-${status}`);
+    try {
+      await api.updateQuote(id, { status, accepted_at: status === 'accepted' ? new Date().toISOString() : undefined });
+      showToast(status === 'sent' ? 'Devis marqué envoyé' : status === 'accepted' ? 'Devis accepté' : 'Statut mis à jour');
+      const fresh = await api.getQuotes();
+      setQuotesData(fresh);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Erreur statut devis');
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const copyQuote = (q: any) => {
+    const text = `DEVIS ${q.quote_number}\nClient: ${clientMap[q.client_id] || q.client_id}\nTotal: ${(q.total || 0).toLocaleString('fr-FR')} ${q.currency}\n\n${(q.terms || '')}`;
+    navigator.clipboard.writeText(text);
+    showToast('Devis copié');
   };
 
   return (
     <div>
-      <Topbar title="Factures" />
+      <Topbar title="Devis" />
       <div className="p-6 space-y-5 animate-fade-in">
-        <FinanceNav activePath="/finance/invoices" />
+        <FinanceNav activePath="/finance/quotes" />
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2"><Receipt size={20} className="text-copper" /><h2 className="text-lg font-bold text-ivory">Factures</h2></div>
+          <div className="flex items-center gap-2"><FileText size={20} className="text-copper" /><h2 className="text-lg font-bold text-ivory">Devis</h2></div>
+          <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-copper text-dark text-sm font-bold hover:bg-copper-light transition"><Plus size={14} /> Nouveau</button>
         </div>
+
+        {showForm && (
+          <SectionCard title="Nouveau devis">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-subtle font-semibold">Client</label>
+                <select value={form.client_id} onChange={(e) => setForm({ ...form, client_id: e.target.value })} className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30">
+                  <option value="">Sélectionner…</option>
+                  {clients.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-subtle font-semibold">Devise</label>
+                <select value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30">
+                  <option value="XAF">XAF (FCFA)</option>
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-subtle font-semibold">Acompte (%)</label>
+                <select value={form.acompte_percent} onChange={(e) => setForm({ ...form, acompte_percent: e.target.value })} className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30">
+                  <option value="0">Aucun</option>
+                  <option value="30">30 %</option>
+                  <option value="50">50 %</option>
+                  <option value="70">70 %</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-subtle font-semibold">Conditions</label>
+                <input value={form.terms} onChange={(e) => setForm({ ...form, terms: e.target.value })} className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30" />
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-subtle font-semibold">Lignes</span>
+                <button onClick={handleAddItem} className="text-xs text-copper hover:text-copper-light flex items-center gap-1"><Plus size={12} /> Ajouter ligne</button>
+              </div>
+              {items.map((item, idx) => (
+                <div key={idx} className="grid grid-cols-1 md:grid-cols-5 gap-2 mb-2">
+                  <select value={item.service_id} onChange={(e) => {
+                    const svc = services.find((s: any) => s.id === e.target.value);
+                    const updated = [...items];
+                    updated[idx] = { ...item, service_id: e.target.value, description: svc?.name || item.description, unit_price: svc?.unit_price || item.unit_price };
+                    setItems(updated);
+                  }} className="bg-deep border border-exec/15 rounded-lg px-2 py-1.5 text-xs text-ivory focus:outline-none">
+                    <option value="">Service…</option>
+                    {services.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                  <input value={item.description} onChange={(e) => { const updated = [...items]; updated[idx] = { ...item, description: e.target.value }; setItems(updated); }} placeholder="Description" className="bg-deep border border-exec/15 rounded-lg px-2 py-1.5 text-xs text-ivory focus:outline-none" />
+                  <input type="number" value={item.quantity} onChange={(e) => { const updated = [...items]; updated[idx] = { ...item, quantity: Number(e.target.value) }; setItems(updated); }} placeholder="Qty" className="bg-deep border border-exec/15 rounded-lg px-2 py-1.5 text-xs text-ivory focus:outline-none" />
+                  <input type="number" value={item.unit_price} onChange={(e) => { const updated = [...items]; updated[idx] = { ...item, unit_price: Number(e.target.value) }; setItems(updated); }} placeholder="PU HT" className="bg-deep border border-exec/15 rounded-lg px-2 py-1.5 text-xs text-ivory focus:outline-none" />
+                  <input type="number" value={item.discount_percent} onChange={(e) => { const updated = [...items]; updated[idx] = { ...item, discount_percent: Number(e.target.value) }; setItems(updated); }} placeholder="Remise %" className="bg-deep border border-exec/15 rounded-lg px-2 py-1.5 text-xs text-ivory focus:outline-none" />
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-2 mt-4">
+              <button onClick={handleSave} className="px-4 py-2 rounded-lg bg-copper text-dark text-sm font-bold hover:bg-copper-light transition">Enregistrer</button>
+              <button onClick={() => { setShowForm(false); setItems([]); }} className="px-4 py-2 rounded-lg border border-exec/15 text-muted text-sm hover:border-copper/30 transition">Annuler</button>
+            </div>
+          </SectionCard>
+        )}
 
         <div className="rounded-xl border border-exec/10 overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-deep border-b border-exec/10">
                 <th className="text-left px-4 py-3 text-xs font-semibold text-subtle uppercase">N°</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-subtle uppercase">Type</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-subtle uppercase">Client</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-subtle uppercase">Statut</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-subtle uppercase">Total</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-subtle uppercase">Payé</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-subtle uppercase">Reste</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-subtle uppercase">Échéance</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-subtle uppercase">Acompte</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-subtle uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-exec/5">
-              {invoices.map((inv: any) => (
-                <tr key={inv.id} className="hover:bg-carbon/40 transition">
-                  <td className="px-4 py-3 text-xs font-mono text-ivory">{inv.invoice_number}</td>
+              {quotes.map((q: any) => (
+                <tr key={q.id} className="hover:bg-carbon/40 transition cursor-pointer" onClick={() => setSelectedQuote(q)}>
+                  <td className="px-4 py-3 text-xs font-mono text-ivory">{q.quote_number}</td>
+                  <td className="px-4 py-3 text-xs text-muted">{clientMap[q.client_id] || q.client_id}</td>
                   <td className="px-4 py-3">
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full border ${inv.invoice_type === 'acompte' ? 'bg-copper/10 border-copper/20 text-copper-light' : inv.invoice_type === 'solde' ? 'bg-emerald-900/20 border-emerald-800/20 text-emerald-400' : 'bg-deep border-exec/10 text-muted'}`}>
-                      {inv.invoice_type || 'final'}
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full border ${q.status === 'accepted' ? 'bg-emerald-900/20 border-emerald-800/20 text-emerald-400' : q.status === 'sent' ? 'bg-copper/10 border-copper/20 text-copper-light' : 'bg-deep border-exec/10 text-muted'}`}>
+                      {q.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-muted">{clientMap[inv.client_id] || inv.client_id}</td>
+                  <td className="px-4 py-3 text-xs text-ivory">{(q.total || 0).toLocaleString('fr-FR')} {q.currency}</td>
+                  <td className="px-4 py-3 text-xs text-subtle">{q.acompte_percent ? `${q.acompte_percent}%` : '—'}</td>
                   <td className="px-4 py-3">
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full border ${inv.status === 'paid' ? 'bg-emerald-900/20 border-emerald-800/20 text-emerald-400' : inv.status === 'partial' ? 'bg-copper/10 border-copper/20 text-copper-light' : inv.status === 'overdue' ? 'bg-red-900/20 border-red-800/20 text-red-400' : 'bg-deep border-exec/10 text-muted'}`}>
-                      {inv.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-ivory">{formatXAF(inv.total)}</td>
-                  <td className="px-4 py-3 text-xs text-emerald-400">{formatXAF(inv.amount_paid)}</td>
-                  <td className="px-4 py-3 text-xs text-copper-light font-bold">{formatXAF(inv.amount_due)}</td>
-                  <td className="px-4 py-3 text-xs text-subtle">{inv.due_date ? new Date(inv.due_date).toLocaleDateString('fr-FR') : '—'}</td>
-                  <td className="px-4 py-3">
-                    {(inv.status === 'sent' || inv.status === 'partial' || inv.status === 'draft' || inv.status === 'overdue') && (
-                      <button onClick={() => { setShowPayment(inv.id); setPayForm({ ...payForm, amount: String(inv.amount_due || inv.total || '') }); }} className="text-xs text-copper hover:text-copper-light flex items-center gap-1 transition">
-                        <DollarSign size={10} /> Encaisser
-                      </button>
-                    )}
+                    <div className="flex gap-2 flex-wrap">
+                      <button onClick={(e) => { e.stopPropagation(); copyQuote(q); }} className="text-xs text-muted hover:text-copper transition" title="Copier"><Copy size={12} /></button>
+                      {q.status === 'draft' && (
+                        <button onClick={(e) => { e.stopPropagation(); updateQuoteStatus(q.id, 'sent'); }} disabled={processing === `${q.id}-sent`} className="text-xs text-copper hover:text-copper-light flex items-center gap-1 transition disabled:opacity-50">
+                          {processing === `${q.id}-sent` ? <Loader2 size={10} className="animate-spin" /> : <Send size={10} />}
+                          Envoyé
+                        </button>
+                      )}
+                      {(q.status === 'draft' || q.status === 'sent') && (
+                        <button onClick={(e) => { e.stopPropagation(); updateQuoteStatus(q.id, 'accepted'); }} disabled={processing === `${q.id}-accepted`} className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition disabled:opacity-50">
+                          {processing === `${q.id}-accepted` ? <Loader2 size={10} className="animate-spin" /> : <CheckCircle size={10} />}
+                          Accepté
+                        </button>
+                      )}
+                      {(q.status === 'accepted' || q.status === 'sent') ? (
+                        <button onClick={(e) => { e.stopPropagation(); convertQuote(q.id); }} disabled={processing === q.id} className="text-xs text-copper hover:text-copper-light flex items-center gap-1 transition disabled:opacity-50">
+                          {processing === q.id ? <Loader2 size={10} className="animate-spin" /> : <ArrowRightCircle size={10} />}
+                          Convertir
+                        </button>
+                      ) : null}
+                    </div>
                   </td>
                 </tr>
               ))}
-              {invoices.length === 0 && !loading && <tr><td colSpan={9} className="px-4 py-6 text-center text-xs text-subtle">Aucune facture client</td></tr>}
+              {quotes.length === 0 && !loading && <tr><td colSpan={6} className="px-4 py-6 text-center text-xs text-subtle">Aucun devis</td></tr>}
             </tbody>
           </table>
         </div>
-
-        {/* Modal paiement */}
-        {showPayment && (
-          <SectionCard title="Enregistrer un encaissement client">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div>
-                <label className="text-xs text-subtle font-semibold">Montant</label>
-                <input type="number" value={payForm.amount} onChange={(e) => setPayForm({ ...payForm, amount: e.target.value })} className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30" />
-              </div>
-              <div>
-                <label className="text-xs text-subtle font-semibold">Devise</label>
-                <select value={payForm.currency} onChange={(e) => setPayForm({ ...payForm, currency: e.target.value })} className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30">
-                  <option value="XAF">XAF</option>
-                  <option value="USD">USD</option>
-                  <option value="EUR">EUR</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-subtle font-semibold">Méthode</label>
-                <select value={payForm.payment_method} onChange={(e) => setPayForm({ ...payForm, payment_method: e.target.value })} className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30">
-                  <option value="orange_money">Orange Money</option>
-                  <option value="mtn_momo">MTN MoMo</option>
-                  <option value="cash">Espèces</option>
-                  <option value="bank_transfer">Virement bancaire</option>
-                  <option value="chariow">Chariow (lien)</option>
-                  <option value="paypal">PayPal</option>
-                  <option value="wave">Wave</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-subtle font-semibold">Détail méthode (ex: n° OM)</label>
-                <input value={payForm.payment_method_detail} onChange={(e) => setPayForm({ ...payForm, payment_method_detail: e.target.value })} className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30" />
-              </div>
-              <div>
-                <label className="text-xs text-subtle font-semibold">Référence</label>
-                <input value={payForm.reference} onChange={(e) => setPayForm({ ...payForm, reference: e.target.value })} className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30" />
-              </div>
-              <div>
-                <label className="text-xs text-subtle font-semibold">Date</label>
-                <input type="date" value={payForm.payment_date} onChange={(e) => setPayForm({ ...payForm, payment_date: e.target.value })} className="w-full mt-1 bg-deep border border-exec/15 rounded-lg px-3 py-2 text-sm text-ivory focus:outline-none focus:border-copper/30" />
-              </div>
-            </div>
-            <div className="flex gap-2 mt-4">
-              <button
-                onClick={() => {
-                  const inv = invoices.find((i: any) => i.id === showPayment);
-                  if (inv) handlePayment(showPayment, inv.client_id);
-                }}
-                disabled={processing === showPayment}
-                className="px-4 py-2 rounded-lg bg-copper text-dark text-sm font-bold hover:bg-copper-light transition disabled:opacity-50"
-              >
-                {processing === showPayment ? <Loader2 size={12} className="animate-spin inline mr-1" /> : <CheckCircle size={12} className="inline mr-1" />}
-                Enregistrer
-              </button>
-              <button onClick={() => setShowPayment(null)} className="px-4 py-2 rounded-lg border border-exec/15 text-muted text-sm hover:border-copper/30 transition">Annuler</button>
-            </div>
-          </SectionCard>
-        )}
       </div>
     </div>
   );
 }
+
