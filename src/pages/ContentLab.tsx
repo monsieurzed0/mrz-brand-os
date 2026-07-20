@@ -187,6 +187,19 @@ export default function ContentLab() {
     }
   };
 
+  // Promeut une idée idea_pending → idea_ready pour qu'elle apparaisse dans Script Room.
+  const promoteIdea = async (id: string) => {
+    try {
+      await api.updateContentIdea(id, { status: 'idea_ready' });
+      setIdeasData((prev: any) =>
+        (prev || []).map((item: any) => (item.id === id ? { ...item, status: 'idea_ready' } : item))
+      );
+      showToast('Idée promue — prête pour Script Room');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Erreur lors de la promotion');
+    }
+  };
+
   return (
     <div>
       <Topbar title="Content Lab" />
@@ -422,6 +435,15 @@ export default function ContentLab() {
                       <td className="px-4 py-3"><StatusBadge status={idea.status} /></td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
+                          {idea.status === 'idea_pending' && (
+                            <button
+                              onClick={() => promoteIdea(idea.id)}
+                              className="text-xs text-copper hover:text-copper-light transition px-2 py-1 rounded hover:bg-copper/10"
+                              title="Valider et envoyer vers Script Room"
+                            >
+                              Promouvoir
+                            </button>
+                          )}
                           <button
                             onClick={() => editIdea(idea)}
                             className="text-xs text-muted hover:text-copper transition px-2 py-1 rounded hover:bg-copper/10"
