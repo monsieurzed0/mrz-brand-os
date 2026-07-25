@@ -13,6 +13,23 @@
   --font-family-sans: 'Raleway', sans-serif;
 }
 
+/* ───────────────────────────────────────────────
+   Tokens de motion — section 6.7 du brief
+   Aucune valeur d'animation en dur dans les composants.
+   ─────────────────────────────────────────────── */
+:root {
+  --motion-instant: 120ms;
+  --motion-fast: 200ms;
+  --motion-base: 400ms;
+  --motion-slow: 800ms;
+  --motion-ambient: 3.5s;
+  --motion-breathe: 8s;
+  --motion-drift: 75s;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 /* Force Raleway everywhere */
 *, *::before, *::after {
   font-family: 'Raleway', sans-serif !important;
@@ -96,4 +113,191 @@ input, textarea, select, button {
 ::selection {
   background-color: rgba(214, 122, 44, 0.3);
   color: #F0EDE8;
+}
+
+/* ───────────────────────────────────────────────
+   DASHBOARD — profondeur, ambiance, séquence d'entrée
+   ─────────────────────────────────────────────── */
+
+/* Focus clavier visible partout */
+:where(a, button, [role='button'], [tabindex]):focus-visible {
+  outline: 2px solid #D67A2C;
+  outline-offset: 2px;
+}
+
+/* Séquence d'entrée — un seul jeu par montage.
+   Le délai est porté par --enter-delay, posé à l'appel. */
+@keyframes mz-enter-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.mz-enter {
+  opacity: 0;
+  animation: mz-enter-rise var(--motion-base) var(--ease-out-expo) forwards;
+  animation-delay: var(--enter-delay, 0ms);
+}
+
+/* Ambiance de fond — orbes cuivrées en dérive */
+@keyframes mz-orb-a {
+  from { transform: translate3d(-4%, -3%, 0) scale(1); }
+  to { transform: translate3d(6%, 5%, 0) scale(1.12); }
+}
+
+@keyframes mz-orb-b {
+  from { transform: translate3d(5%, 4%, 0) scale(1.08); }
+  to { transform: translate3d(-6%, -4%, 0) scale(0.94); }
+}
+
+.mz-orb-a {
+  animation: mz-orb-a var(--motion-drift) var(--ease-soft) infinite alternate;
+}
+
+.mz-orb-b {
+  animation: mz-orb-b calc(var(--motion-drift) * 1.2) var(--ease-soft) infinite alternate;
+}
+
+/* Grille en perspective */
+.mz-grid {
+  background-image:
+    linear-gradient(to right, rgba(122, 111, 103, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(122, 111, 103, 0.08) 1px, transparent 1px);
+  background-size: 58px 58px;
+  transform: perspective(620px) rotateX(60deg);
+  transform-origin: bottom center;
+  -webkit-mask-image: radial-gradient(ellipse 70% 100% at 50% 100%, #000 0%, transparent 72%);
+  mask-image: radial-gradient(ellipse 70% 100% at 50% 100%, #000 0%, transparent 72%);
+}
+
+/* Grain — fixe, ne s'anime jamais */
+.mz-grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+}
+
+/* Respiration du halo cuivré — hero, anneau de santé */
+@keyframes mz-breathe {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+
+.mz-breathe {
+  animation: mz-breathe var(--motion-breathe) var(--ease-soft) infinite;
+}
+
+/* Profondeur — carte cliquable */
+.mz-lift {
+  transform-style: preserve-3d;
+  transition: transform var(--motion-fast) var(--ease-soft),
+              border-color var(--motion-fast) var(--ease-soft);
+}
+
+.mz-lift:hover {
+  transform: translateY(-2px) translateZ(8px);
+}
+
+/* Tracé SVG — sparkline, anneau */
+@keyframes mz-draw {
+  from { stroke-dashoffset: var(--draw-from); }
+  to { stroke-dashoffset: var(--draw-to); }
+}
+
+.mz-draw {
+  stroke-dasharray: var(--draw-length);
+  stroke-dashoffset: var(--draw-to);
+  animation: mz-draw var(--motion-slow) var(--ease-out-expo) forwards;
+  animation-delay: var(--enter-delay, 0ms);
+}
+
+/* Barres de progression — scaleX, jouée une seule fois */
+@keyframes mz-bar {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(var(--bar-scale)); }
+}
+
+.mz-bar {
+  transform-origin: left center;
+  transform: scaleX(var(--bar-scale));
+  animation: mz-bar 700ms var(--ease-out-expo) forwards;
+  animation-delay: var(--enter-delay, 0ms);
+}
+
+/* Pulsation brève quand une valeur change en cours de session */
+@keyframes mz-value-pulse {
+  0% { color: #F0EDE8; }
+  35% { color: #EF9F27; }
+  100% { color: inherit; }
+}
+
+.mz-value-pulse {
+  animation: mz-value-pulse var(--motion-slow) var(--ease-soft);
+}
+
+/* Anneau tracé autour d'une action rapide au survol */
+.mz-action-ring {
+  stroke-dasharray: var(--draw-length);
+  stroke-dashoffset: var(--draw-length);
+  transition: stroke-dashoffset 300ms var(--ease-out-expo);
+}
+
+.mz-action:hover .mz-action-ring,
+.mz-action:focus-visible .mz-action-ring {
+  stroke-dashoffset: 0;
+}
+
+/* Ligne de tableau — bordure gauche cuivre au survol */
+.mz-row {
+  transition: transform var(--motion-fast) var(--ease-soft),
+              background-color var(--motion-fast) var(--ease-soft),
+              box-shadow var(--motion-fast) var(--ease-soft);
+}
+
+.mz-row:hover {
+  transform: translateX(2px);
+  box-shadow: inset 2px 0 0 0 #D67A2C;
+}
+
+/* ───────────────────────────────────────────────
+   prefers-reduced-motion — états finaux conservés,
+   boucles et cascades retirées.
+   ─────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .mz-enter {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+
+  .mz-orb-a,
+  .mz-orb-b,
+  .mz-breathe,
+  .animate-pulse-copper,
+  .animate-glow {
+    animation: none;
+  }
+
+  .mz-breathe {
+    opacity: 0.8;
+  }
+
+  .mz-draw {
+    stroke-dashoffset: var(--draw-to);
+    animation: none;
+  }
+
+  .mz-bar {
+    transform: scaleX(var(--bar-scale));
+    animation: none;
+  }
+
+  .mz-value-pulse {
+    animation: none;
+  }
+
+  .mz-lift:hover {
+    transform: none;
+  }
+
+  .mz-row:hover {
+    transform: none;
+  }
 }

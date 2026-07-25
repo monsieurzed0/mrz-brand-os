@@ -1,291 +1,524 @@
 import { useMemo } from 'react';
+import type { CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Lightbulb,
-  FileText,
-  Users,
-  Briefcase,
-  Shield,
-  Bot,
-  Zap,
-  PenTool,
-  Palette,
-  Target,
-  Calendar,
-  Sparkles,
-  ExternalLink,
-  ArrowRight,
   AlertTriangle,
+  ArrowRight,
+  BarChart3,
+  Bot,
+  Briefcase,
+  Coins,
+  FileText,
+  Receipt,
+  Target,
+  UserPlus,
+  Wallet,
 } from 'lucide-react';
 
 import Topbar from '@/components/Topbar';
 import KPICard from '@/components/KPICard';
 import SectionCard from '@/components/SectionCard';
 import StatusBadge from '@/components/StatusBadge';
-
 import ChartGuard from '@/components/ChartGuard';
-import BrandPulseRadar from '@/components/charts/BrandPulseRadar';
-import FlowChart from '@/components/charts/FlowChart';
-import FunnelChart from '@/components/charts/FunnelChart';
+
+import AmbientField from '@/components/dashboard/AmbientField';
+import HealthRing from '@/components/dashboard/HealthRing';
+import ValueChain from '@/components/dashboard/ValueChain';
 
 import { api } from '@/lib/api';
 import { useApiQuery } from '@/hooks/useApiQuery';
-import { ASSETS, CLIENT_LOGOS } from '@/lib/constants';
-import { buildDashboardViewModel } from '@/lib/dashboardViewModel';
+import {
+  buildPipelineStages,
+  buildRevenueSeries,
+  clientNameById,
+  computeEcosystemHealth,
+  contextLine,
+  dashboardProjects,
+  formatRelativeTime,
+  formatShortDate,
+  formatXAF,
+  greetingFor,
+  projectProgress,
+  recentInvoices,
+} from '@/lib/dashboardMetrics';
 
-function SafeList({ items }: { items: { label: string; value: number }[] }) {
-  return (
-    <div className="space-y-2">
-      {items.map((item) => (
-        <div
-          key={item.label}
-          className="flex items-center justify-between rounded-lg bg-deep/60 border border-exec/8 px-3 py-2"
-        >
-          <span className="text-xs text-muted">{item.label}</span>
-          <span className="text-sm font-semibold text-ivory">{item.value}</span>
-        </div>
-      ))}
-    </div>
-  );
+// Séquence d'entrée — section 6.5. Chaque zone porte son délai.
+const DELAY = {
+  greeting: 60,
+  kpi: 120,
+  kpiStagger: 40,
+  hero: 280,
+  actions: 340,
+  aside: 380,
+  chain: 460,
+  bottom: 520,
+};
+
+const QUICK_ACTIONS = [
+  { label: 'Nouveau lead', icon: UserPlus, route: '/leads' },
+  { label: 'Nouveau devis', icon: FileText, route: '/finance/quotes' },
+  { label: 'Nouvelle dépense', icon: Receipt, route: '/finance/expenses' },
+  { label: 'Lancer un agent', icon: Bot, route: '/agents' },
+  { label: 'Rapports', icon: BarChart3, route: '/finance/reports' },
+];
+
+function delayStyle(ms: number): CSSProperties {
+  return { '--enter-delay': `${ms}ms` } as CSSProperties;
 }
 
 export default function Dashboard() {
   const navigate = useNavigate();
 
-  const { data: summary, loading: summaryLoading, error: summaryError } = useApiQuery(api.getDashboardSummary, []);
-  const { data: contentIdeasData } = useApiQuery(api.getContentIdeas, []);
-  const { data: scriptsData } = useApiQuery(api.getScripts, []);
-  const { data: leadsData } = useApiQuery(api.getLeads, []);
-  const { data: projectsData } = useApiQuery(api.getProjects, []);
-  const { data: proofsData } = useApiQuery(api.getProofs, []);
-  const { data: mediaLinksData } = useApiQuery(api.getMediaLinks, []);
+  const { data: summary, error: summaryError } = useApiQuery(api.getDashboardSummary, []);
+  const { data: finance } = useApiQuery(api.getFinanceSummary, []);
+  const { data: balanceSheet } = useApiQuery(api.getBalanceSheet, []);
+  const { data: invoices } = useApiQuery(api.getInvoices, []);
+  const { data: clients } = useApiQuery(api.getClients, []);
+  const { data: contentIdeas, loading: ideasLoading } = useApiQuery(api.getContentIdeas, []);
+  const { data: scripts, loading: scriptsLoading } = useApiQuery(api.getScripts, []);
+  const { data: leads, loading: leadsLoading } = useApiQuery(api.getLeads, []);
+  const { data: projects, loading: projectsLoading } = useApiQuery(api.getProjects, []);
+  const { data: proofs } = useApiQuery(api.getProofs, []);
+  const { data: visualPrompts } = useApiQuery(api.getVisualPrompts, []);
+  const { data: marketIntel } = useApiQuery(api.getMarketIntel, []);
 
-  const vm = useMemo(
-    () =>
-      buildDashboardViewModel({
-        summary,
-        contentIdeas: contentIdeasData,
-        scripts: scriptsData,
-        leads: leadsData,
-        projects: projectsData,
-        proofs: proofsData,
-        mediaLinks: mediaLinksData,
-      }),
-    [summary, contentIdeasData, scriptsData, leadsData, projectsData, proofsData, mediaLinksData]
+  const metrics = summary?.metrics;
+  const weekly = summary?.weekly || null;
+
+  const greeting = useMemo(() => greetingFor(), []);
+  const subline = contextLine(metrics);
+
+  const revenue = useMemo(() => buildRevenueSeries(invoices), [invoices]);
+
+  const health = useMemo(
+    () => computeEcosystemHealth({ contentIdeas, leads, proofs, balanceSheet }),
+    [contentIdeas, leads, proofs, balanceSheet]
   );
 
-  const quickActions = [
-    { label: 'Générer 5 idées', icon: Sparkles, route: '/content' },
-    { label: 'Content Engine', icon: Zap, route: '/content-engine' },
-    { label: 'Nouveau script', icon: PenTool, route: '/scripts' },
-    { label: 'Prompt visuel', icon: Palette, route: '/visual-lab' },
-    { label: 'Qualifier lead', icon: Target, route: '/leads' },
-    { label: 'Revue hebdo', icon: Calendar, route: '/weekly' },
-  ];
+  const stages = useMemo(
+    () =>
+      buildPipelineStages({
+        marketIntel,
+        contentIdeas,
+        scripts,
+        visualPrompts,
+        leads,
+        projects,
+        proofs,
+        invoices,
+      }),
+    [marketIntel, contentIdeas, scripts, visualPrompts, leads, projects, proofs, invoices]
+  );
 
-  const safeBrandPulse = Array.isArray(vm.brandPulse)
-    ? vm.brandPulse
-      .map((item: any) => ({ label: String(item?.label || ''), value: Number(item?.value || 0) }))
-      .filter((item: any) => item.label)
-    : [];
+  const chainReady = !ideasLoading && !scriptsLoading && !leadsLoading && !projectsLoading;
 
-  const safeContentFlow = Array.isArray(vm.contentFlow)
-    ? vm.contentFlow
-      .map((item: any) => ({ label: String(item?.label || ''), value: Number(item?.value || 0) }))
-      .filter((item: any) => item.label)
-    : [];
+  const runs = Array.isArray(summary?.latestRuns) ? (summary?.latestRuns as any[]).slice(0, 5) : [];
+  const shownProjects = dashboardProjects(projects);
+  const shownInvoices = recentInvoices(invoices);
 
-  const safeLeadFunnel = Array.isArray(vm.leadFunnel)
-    ? vm.leadFunnel
-      .map((item: any) => ({ label: String(item?.label || ''), value: Number(item?.value || 0) }))
-      .filter((item: any) => item.label)
-    : [];
-
-  const safeProjectHealth = Array.isArray(vm.projectHealth)
-    ? vm.projectHealth
-      .map((item: any) => ({ label: String(item?.label || ''), value: Number(item?.value || 0) }))
-      .filter((item: any) => item.label)
-    : [];
+  const outstanding = Number(finance?.outstanding || 0);
+  const overdue = Number(finance?.overdue || 0);
 
   return (
-    <div>
+    <div className="relative">
+      <AmbientField />
       <Topbar title="Dashboard" />
-      <div className="p-6 space-y-5 animate-fade-in">
-        {summaryLoading ? <div className="text-sm text-subtle">Chargement du dashboard...</div> : null}
-        {summaryError ? <div className="text-sm text-red-400">Erreur : {summaryError}</div> : null}
 
-        <div className="flex flex-wrap gap-2">
-          {quickActions.map((a) => (
-            <button
-              key={a.label}
-              onClick={() => navigate(a.route)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-exec/15 bg-carbon hover:border-copper/30 hover:bg-copper/5 transition text-sm font-semibold text-muted hover:text-copper-light"
+      <div className="max-w-[1600px] mx-auto p-6 space-y-5">
+        {summaryError ? (
+          <p className="text-xs text-copper-light">Le résumé n'a pas pu être chargé : {summaryError}</p>
+        ) : null}
+
+        {/* ── ZONE 1 — Salutation ───────────────────────────────── */}
+        <header className="mz-enter" style={delayStyle(DELAY.greeting)}>
+          <h2 className="text-3xl font-extrabold tracking-tight text-ivory">{greeting}</h2>
+          <p className="mt-1.5 text-sm text-muted">{subline}</p>
+        </header>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4" style={{ perspective: '1200px' }}>
+          <div className="lg:col-span-2 space-y-4">
+            {/* ── ZONE 2 — Quatre KPI ─────────────────────────── */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+              <KPICard
+                label="CA du mois"
+                value={Number(finance?.revenue?.month || 0)}
+                format={formatXAF}
+                animateValue
+                icon={<Coins size={18} />}
+                accent
+                sparkline={revenue.points}
+                trend={revenue.trend || undefined}
+                enterDelay={DELAY.kpi}
+                onClick={() => navigate('/finance')}
+              />
+              <KPICard
+                label="En attente d'encaissement"
+                value={outstanding}
+                format={formatXAF}
+                animateValue
+                icon={<Wallet size={18} />}
+                trend={overdue > 0 ? `dont ${formatXAF(overdue)} en retard` : undefined}
+                enterDelay={DELAY.kpi + DELAY.kpiStagger}
+                onClick={() => navigate('/finance/invoices')}
+              />
+              <KPICard
+                label="Leads chauds"
+                value={Number(metrics?.hotLeads || 0)}
+                animateValue
+                icon={<Target size={18} />}
+                enterDelay={DELAY.kpi + DELAY.kpiStagger * 2}
+                onClick={() => navigate('/leads')}
+              />
+              <KPICard
+                label="Projets actifs"
+                value={Number(metrics?.activeProjects || 0)}
+                animateValue
+                icon={<Briefcase size={18} />}
+                enterDelay={DELAY.kpi + DELAY.kpiStagger * 3}
+                onClick={() => navigate('/projects')}
+              />
+            </div>
+
+            {/* ── ZONE 3 — Priorité de la semaine ─────────────── */}
+            <section
+              className="relative overflow-hidden rounded-2xl border border-copper/20 bg-gradient-to-br from-carbon to-deep p-6 mz-enter"
+              style={delayStyle(DELAY.hero)}
             >
-              <a.icon size={15} />
-              {a.label}
-            </button>
-          ))}
+              <div className="absolute -top-20 -right-16 w-64 h-64 rounded-full bg-copper/10 blur-3xl mz-breathe pointer-events-none" />
+
+              {weekly?.focus_primary ? (
+                <div className="relative">
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-copper animate-pulse-copper" />
+                    <p className="text-[10px] uppercase tracking-[0.14em] text-copper font-bold">
+                      {weekly.week_label || 'Semaine en cours'}
+                    </p>
+                  </div>
+
+                  <h3 className="mt-3 text-2xl font-extrabold text-ivory leading-snug">
+                    {weekly.focus_primary}
+                  </h3>
+
+                  {(weekly.focus_secondary || weekly.focus_tertiary) && (
+                    <div className="mt-4 flex flex-wrap gap-x-8 gap-y-2">
+                      {weekly.focus_secondary && (
+                        <p className="text-xs text-muted">
+                          <span className="text-subtle">2 — </span>
+                          {weekly.focus_secondary}
+                        </p>
+                      )}
+                      {weekly.focus_tertiary && (
+                        <p className="text-xs text-muted">
+                          <span className="text-subtle">3 — </span>
+                          {weekly.focus_tertiary}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {weekly.main_risk && (
+                    <div className="mt-4 flex items-start gap-2.5">
+                      <AlertTriangle size={14} className="text-copper mt-0.5 shrink-0" />
+                      <p className="text-xs text-muted leading-relaxed">{weekly.main_risk}</p>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => navigate('/weekly')}
+                    className="mt-5 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-copper/15 border border-copper/30 text-xs font-bold text-copper-light hover:bg-copper/25 transition-colors duration-200"
+                  >
+                    Ouvrir le pilotage
+                    <ArrowRight size={13} />
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <p className="text-sm text-ivory font-semibold">Aucune priorité définie cette semaine.</p>
+                  <button
+                    onClick={() => navigate('/weekly')}
+                    className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-copper/15 border border-copper/30 text-xs font-bold text-copper-light hover:bg-copper/25 transition-colors duration-200"
+                  >
+                    Définir la priorité
+                    <ArrowRight size={13} />
+                  </button>
+                </div>
+              )}
+            </section>
+
+            {/* ── ZONE 4 — Actions rapides ────────────────────── */}
+            <section
+              className="rounded-xl border border-exec/10 bg-carbon p-5 mz-enter"
+              style={delayStyle(DELAY.actions)}
+            >
+              <div className="flex flex-wrap justify-between gap-4">
+                {QUICK_ACTIONS.map((action) => (
+                  <button
+                    key={action.label}
+                    onClick={() => navigate(action.route)}
+                    className="mz-action flex flex-col items-center gap-2 group rounded-xl px-2 py-1"
+                  >
+                    <span className="relative flex items-center justify-center w-14 h-14 rounded-full bg-deep border border-exec/15 transition-transform duration-200 group-hover:scale-[1.08]">
+                      <svg
+                        viewBox="0 0 56 56"
+                        className="absolute inset-0 w-full h-full -rotate-90"
+                        aria-hidden="true"
+                      >
+                        <circle
+                          cx="28"
+                          cy="28"
+                          r="27"
+                          fill="none"
+                          strokeWidth="1.5"
+                          className="stroke-copper mz-action-ring"
+                          style={{ '--draw-length': `${(2 * Math.PI * 27).toFixed(2)}` } as CSSProperties}
+                        />
+                      </svg>
+                      <action.icon
+                        size={19}
+                        className="text-exec group-hover:text-copper transition-colors duration-200"
+                      />
+                    </span>
+                    <span className="text-[11px] text-muted group-hover:text-ivory transition-colors duration-200">
+                      {action.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          </div>
+
+          {/* ── ZONE 5 — Colonne latérale ───────────────────────── */}
+          <div className="lg:col-span-1 space-y-4">
+            <SectionCard
+              title="Santé de l'écosystème"
+              subtitle="Moyenne des indicateurs mesurables"
+              className="mz-enter"
+            >
+              <div style={delayStyle(DELAY.aside)}>
+                <ChartGuard title="Santé de l'écosystème">
+                  <HealthRing health={health} enterDelay={DELAY.aside} />
+                </ChartGuard>
+              </div>
+            </SectionCard>
+
+            <SectionCard
+              title="Activité des agents"
+              className="mz-enter"
+              headerRight={
+                <button
+                  onClick={() => navigate('/agents')}
+                  className="text-xs text-copper hover:text-copper-light transition-colors duration-200 flex items-center gap-1 font-semibold"
+                >
+                  Tout voir <ArrowRight size={12} />
+                </button>
+              }
+            >
+              {runs.length ? (
+                <ul className="space-y-2.5">
+                  {runs.map((run, index) => {
+                    const status = String(run?.run_status || '');
+                    const relative = formatRelativeTime(run?.created_at as string | undefined);
+                    return (
+                      <li
+                        key={String(run?.id || index)}
+                        className="flex items-center gap-3 mz-enter"
+                        style={delayStyle(DELAY.aside + 80 + index * 40)}
+                      >
+                        <span
+                          className={`w-2 h-2 rounded-full shrink-0 ${
+                            status === 'running'
+                              ? 'bg-copper animate-pulse-copper'
+                              : status === 'done'
+                                ? 'bg-copper/60'
+                                : 'bg-subtle/40'
+                          }`}
+                        />
+                        <span className="text-xs font-semibold text-ivory shrink-0">
+                          {String(run?.agent_name || 'Agent')}
+                        </span>
+                        <span className="text-xs text-muted flex-1 min-w-0 truncate">
+                          {String(run?.output_summary || run?.input_summary || '')}
+                        </span>
+                        {relative && <span className="text-[10px] text-subtle shrink-0">{relative}</span>}
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <EmptyState
+                  message="Aucun run d'agent enregistré."
+                  action="Ouvrir la console"
+                  onAction={() => navigate('/agents')}
+                />
+              )}
+            </SectionCard>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <SectionCard title="Priorité centrale" className="lg:col-span-1" headerRight={<StatusBadge status="project_active" />}>
-            {vm.weeklyPlan ? (
-              <div className="space-y-3">
-                <div className="p-3.5 rounded-xl bg-copper/10 border border-copper/20">
-                  <p className="text-[10px] text-copper font-bold uppercase tracking-wider mb-1.5">Priorité #1</p>
-                  <p className="text-sm text-ivory font-semibold leading-snug">{vm.weeklyPlan.focus_primary}</p>
-                </div>
-                <div className="p-3 rounded-lg bg-deep border border-exec/10">
-                  <p className="text-[10px] text-subtle font-bold uppercase tracking-wider mb-1">Priorité #2</p>
-                  <p className="text-sm text-muted">{vm.weeklyPlan.focus_secondary || 'Non définie'}</p>
-                </div>
-                <div className="p-3 rounded-lg bg-deep border border-exec/10">
-                  <p className="text-[10px] text-subtle font-bold uppercase tracking-wider mb-1">Priorité #3</p>
-                  <p className="text-sm text-muted">{vm.weeklyPlan.focus_tertiary || 'Non définie'}</p>
-                </div>
-                {vm.weeklyPlan.main_risk ? (
-                  <div className="flex items-start gap-2.5 p-3 rounded-lg bg-red-950/20 border border-red-900/20">
-                    <AlertTriangle size={14} className="text-red-400 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-[10px] text-red-400 font-bold uppercase tracking-wider mb-0.5">Risque</p>
-                      <p className="text-xs text-red-300 leading-relaxed">{vm.weeklyPlan.main_risk}</p>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
+        {/* ── ZONE 6 — Chaîne de valeur ─────────────────────────── */}
+        <SectionCard
+          title="Chaîne de valeur"
+          subtitle="Ce qui attend à chaque stade du système"
+          noPad
+        >
+          <div className="px-3 pb-3">
+            <ChartGuard title="Chaîne de valeur">
+              <ValueChain stages={stages} ready={chainReady} enterDelay={DELAY.chain} />
+            </ChartGuard>
+          </div>
+        </SectionCard>
+
+        {/* ── ZONES 7 & 8 ───────────────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <SectionCard
+            title="Projets"
+            className="mz-enter"
+            headerRight={
+              <button
+                onClick={() => navigate('/projects')}
+                className="text-xs text-copper hover:text-copper-light transition-colors duration-200 flex items-center gap-1 font-semibold"
+              >
+                Tout voir <ArrowRight size={12} />
+              </button>
+            }
+          >
+            {shownProjects.length ? (
+              <ul className="space-y-4">
+                {shownProjects.map((project, index) => {
+                  const progress = projectProgress(project.status);
+                  return (
+                    <li key={project.id}>
+                      <div className="flex items-baseline justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-ivory truncate">{project.client_name}</p>
+                          {project.offre && (
+                            <p className="text-[10px] text-subtle truncate mt-0.5">{project.offre}</p>
+                          )}
+                        </div>
+                        {progress !== null && (
+                          <span className="text-xs font-bold text-copper-light tabular-nums shrink-0">
+                            {progress} %
+                          </span>
+                        )}
+                      </div>
+                      {progress !== null && (
+                        <div className="mt-2 h-1.5 rounded-full bg-exec/15 overflow-hidden">
+                          <div
+                            className="h-full w-full rounded-full bg-copper mz-bar"
+                            style={
+                              {
+                                '--bar-scale': `${progress / 100}`,
+                                '--enter-delay': `${DELAY.bottom + index * 80}ms`,
+                              } as CSSProperties
+                            }
+                          />
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
             ) : (
-              <p className="text-sm text-subtle">Aucun plan hebdomadaire</p>
+              <EmptyState
+                message="Aucun projet planifié ou en cours."
+                action="Ouvrir Projets"
+                onAction={() => navigate('/projects')}
+              />
             )}
           </SectionCard>
 
-          <SectionCard title="Brand Pulse" subtitle="Santé globale de la marque">
-            <ChartGuard title="Brand Pulse">
-              <div className="flex justify-center" style={{ height: '200px' }}>
-                <BrandPulseRadar data={safeBrandPulse} />
+          <SectionCard
+            title="Dernières factures"
+            className="mz-enter"
+            noPad
+            headerRight={
+              <button
+                onClick={() => navigate('/finance/invoices')}
+                className="text-xs text-copper hover:text-copper-light transition-colors duration-200 flex items-center gap-1 font-semibold"
+              >
+                Tout voir <ArrowRight size={12} />
+              </button>
+            }
+          >
+            {shownInvoices.length ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-deep">
+                    <tr>
+                      {['Numéro', 'Client', 'Date', 'Montant', 'Statut'].map((head) => (
+                        <th
+                          key={head}
+                          className="px-5 py-2.5 text-[10px] uppercase tracking-wider text-subtle font-bold"
+                        >
+                          {head}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-exec/5">
+                    {shownInvoices.map((invoice, index) => (
+                      <tr
+                        key={invoice.id}
+                        onClick={() => navigate('/finance/invoices')}
+                        className="mz-row mz-enter cursor-pointer hover:bg-carbon/40"
+                        style={delayStyle(DELAY.bottom + index * 30)}
+                      >
+                        <td className="px-5 py-3 text-xs font-semibold text-ivory whitespace-nowrap">
+                          {invoice.invoice_number}
+                        </td>
+                        <td className="px-5 py-3 text-xs text-muted max-w-[160px] truncate">
+                          {clientNameById(clients, invoice.client_id) || '—'}
+                        </td>
+                        <td className="px-5 py-3 text-xs text-subtle whitespace-nowrap">
+                          {formatShortDate(invoice.issue_date)}
+                        </td>
+                        <td className="px-5 py-3 text-xs font-bold text-copper-light whitespace-nowrap">
+                          {formatXAF(Number(invoice.total || 0))}
+                        </td>
+                        <td className="px-5 py-3">
+                          {invoice.status ? <StatusBadge status={invoice.status} size="sm" /> : null}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            </ChartGuard>
+            ) : (
+              <div className="px-5 pb-5">
+                <EmptyState
+                  message="Aucune facture émise."
+                  action="Ouvrir Factures"
+                  onAction={() => navigate('/finance/invoices')}
+                />
+              </div>
+            )}
           </SectionCard>
-
-          <SectionCard title="Agent Heartbeat" subtitle="État des agents IA">
-            <div className="space-y-2">
-              {vm.agents.map((agent: any) => (
-                <div key={agent.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-deep/60 border border-exec/8 hover:border-copper/15 transition">
-                  <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${agent.status === 'active' ? 'bg-copper animate-pulse-copper' : agent.status === 'error' ? 'bg-red-400' : 'bg-subtle/40'}`} />
-                  <span className="text-xs font-semibold text-ivory flex-1">{agent.name}</span>
-                  <StatusBadge status={agent.status} />
-                </div>
-              ))}
-            </div>
-          </SectionCard>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          <KPICard label="Idées prêtes" value={vm.metrics.ideasReady} icon={<Lightbulb size={18} />} accent />
-          <KPICard label="Scripts à valider" value={vm.metrics.scriptsReview} icon={<FileText size={18} />} accent={vm.metrics.scriptsReview > 0} />
-          <KPICard label="Leads chauds" value={vm.metrics.hotLeads} icon={<Users size={18} />} accent={vm.metrics.hotLeads > 0} />
-          <KPICard label="Projets actifs" value={vm.metrics.activeProjects} icon={<Briefcase size={18} />} />
-          <KPICard label="Preuves validées" value={vm.metrics.proofsValidated} icon={<Shield size={18} />} />
-          <KPICard label="Runs agents" value={vm.metrics.agentRuns} icon={<Bot size={18} />} />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <SectionCard title="Content Flow" subtitle="Pipeline éditorial">
-            <ChartGuard title="Content Flow">
-              <FlowChart steps={safeContentFlow} />
-            </ChartGuard>
-          </SectionCard>
-          <SectionCard title="Lead Funnel" subtitle="Pipeline commercial">
-            <ChartGuard title="Lead Funnel">
-              <FunnelChart steps={safeLeadFunnel} />
-            </ChartGuard>
-          </SectionCard>
-          <SectionCard title="Project Health" subtitle="Santé des projets">
-            <ChartGuard title="Project Health">
-              <FlowChart steps={safeProjectHealth} />
-            </ChartGuard>
-          </SectionCard>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          <SectionCard title="Leads prioritaires" headerRight={
-            <button onClick={() => navigate('/leads')} className="text-xs text-copper hover:text-copper-light transition flex items-center gap-1 font-semibold">
-              Voir tout <ArrowRight size={12} />
-            </button>
-          }>
-            <div className="space-y-2">
-              {vm.priorityLeads.map((l: any) => (
-                <div key={l.id} className="flex items-center justify-between p-2.5 rounded-lg bg-deep/60 border border-exec/8">
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-ivory truncate">{String(l.name).split(' — ')[0]}</p>
-                    <p className="text-[10px] text-subtle truncate">{l.besoin}</p>
-                  </div>
-                  <StatusBadge status={l.status} />
-                </div>
-              ))}
-              {vm.priorityLeads.length === 0 ? <p className="text-xs text-subtle text-center py-2">Aucun lead prioritaire</p> : null}
-            </div>
-          </SectionCard>
-
-          <SectionCard title="Projets actifs" headerRight={
-            <button onClick={() => navigate('/projects')} className="text-xs text-copper hover:text-copper-light transition flex items-center gap-1 font-semibold">
-              Voir tout <ArrowRight size={12} />
-            </button>
-          }>
-            <div className="space-y-2">
-              {vm.activeOrWaitingProjects.map((p: any) => (
-                <div key={p.id} className="flex items-center justify-between p-2.5 rounded-lg bg-deep/60 border border-exec/8">
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-ivory truncate">{p.client_name}</p>
-                    <p className="text-[10px] text-subtle truncate">{p.phase}</p>
-                  </div>
-                  <StatusBadge status={p.status} />
-                </div>
-              ))}
-            </div>
-          </SectionCard>
-
-          <SectionCard title="Clients & références">
-            <div className="grid grid-cols-3 gap-2">
-              {CLIENT_LOGOS.map((c) => (
-                <div key={c.name} className="flex items-center justify-center p-2.5 rounded-lg bg-deep/60 border border-exec/8 h-12 hover:border-copper/20 transition">
-                  <img src={c.url} alt={c.name} className="max-h-6 max-w-full object-contain opacity-60 hover:opacity-100 transition" />
-                </div>
-              ))}
-            </div>
-          </SectionCard>
-
-          <SectionCard title="Présence digitale" headerRight={
-            <button onClick={() => navigate('/media-center')} className="text-xs text-copper hover:text-copper-light transition flex items-center gap-1 font-semibold">
-              Media Center <ArrowRight size={12} />
-            </button>
-          }>
-            <div className="grid grid-cols-2 gap-1.5">
-              {vm.digitalPresence.map((link: any) => (
-                <a key={link.name} href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-deep/80 border border-transparent hover:border-copper/15 transition group">
-                  <span className="text-[11px] text-muted group-hover:text-ivory font-medium truncate">{link.name}</span>
-                  <ExternalLink size={10} className="text-subtle/50 group-hover:text-copper transition shrink-0" />
-                </a>
-              ))}
-            </div>
-          </SectionCard>
-        </div>
-
-        <div className="relative rounded-xl border border-exec/15 overflow-hidden">
-          <div className="absolute inset-0 bg-cover bg-center opacity-[0.03]" style={{ backgroundImage: `url(${ASSETS.heroBg})` }} />
-          <div className="relative flex items-center gap-6 p-6">
-            <img src={ASSETS.founderPhoto} alt="Mr Z" className="w-16 h-16 rounded-full object-cover border-2 border-copper/40 shadow-premium" />
-            <div className="flex-1">
-              <p className="text-base font-bold text-ivory">Hervé Kevin ZEH</p>
-              <p className="text-xs text-copper font-semibold mt-0.5">Fondateur · Mr Z Brand</p>
-              <p className="text-xs text-muted mt-1.5">Branding · Design · Stratégie — Afrique assumée, standard premium</p>
-            </div>
-            <div className="flex gap-4 items-center">
-              <img src={ASSETS.signalLogo} alt="SIGNAL™ by Mr Z" className="h-9 opacity-50 hover:opacity-100 transition" />
-              <img src={ASSETS.proskillsLogo} alt="PROSKILLS FR" className="h-9 opacity-50 hover:opacity-100 transition" />
-            </div>
-          </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Constat court + action. Jamais de « aucune donnée disponible » sec. */
+function EmptyState({
+  message,
+  action,
+  onAction,
+}: {
+  message: string;
+  action: string;
+  onAction: () => void;
+}) {
+  return (
+    <div className="py-2">
+      <p className="text-xs text-muted">{message}</p>
+      <button
+        onClick={onAction}
+        className="mt-3 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-exec/15 bg-deep text-[11px] font-semibold text-muted hover:text-copper-light hover:border-copper/30 transition-colors duration-200"
+      >
+        {action}
+        <ArrowRight size={12} />
+      </button>
     </div>
   );
 }
