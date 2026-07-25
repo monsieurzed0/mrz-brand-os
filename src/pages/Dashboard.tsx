@@ -124,7 +124,7 @@ export default function Dashboard() {
       <AmbientField />
       <Topbar title="Dashboard" />
 
-      <div className="max-w-[1600px] mx-auto p-6 space-y-5">
+      <div className="max-w-[1600px] mx-auto p-4 sm:p-6 space-y-5">
         {summaryError ? (
           <p className="text-xs text-copper-light">Le résumé n'a pas pu être chargé : {summaryError}</p>
         ) : null}

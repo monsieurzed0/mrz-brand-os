@@ -29,23 +29,30 @@ import FinanceClients from '@/pages/FinanceClients';
 import FinanceExpenses from '@/pages/FinanceExpenses';
 
 function Layout() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [sidebarHidden, setSidebarHidden] = useState(false);
+  // Une seule condition d'affichage pour la sidebar : étendue ou réduite.
+  // Réduite par défaut sous `lg`, où l'écran ne peut pas porter les deux.
+  const [sidebarExpanded, setSidebarExpanded] = useState(() =>
+    typeof window === 'undefined' ? true : window.matchMedia('(min-width: 1024px)').matches
+  );
 
-  const mainClassName = sidebarHidden
-    ? 'flex-1 min-h-screen transition-all duration-300'
-    : sidebarCollapsed
-      ? 'flex-1 ml-20 min-h-screen transition-all duration-300'
-      : 'flex-1 ml-60 min-h-screen transition-all duration-300';
+  // Sous `lg`, la sidebar étendue se superpose au contenu au lieu de le
+  // pousser : sinon la page déborde horizontalement dès 375 px.
+  const mainClassName = `flex-1 min-h-screen min-w-0 ml-20 transition-all duration-300 ${
+    sidebarExpanded ? 'lg:ml-60' : 'lg:ml-20'
+  }`;
 
   return (
     <div className="flex min-h-screen bg-dark">
-      <Sidebar
-        collapsed={sidebarCollapsed}
-        hidden={sidebarHidden}
-        onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
-        onToggleHidden={() => setSidebarHidden((v) => !v)}
-      />
+      <Sidebar expanded={sidebarExpanded} onToggleExpand={() => setSidebarExpanded((v) => !v)} />
+
+      {sidebarExpanded && (
+        <div
+          className="fixed inset-0 z-30 bg-dark/60 lg:hidden"
+          onClick={() => setSidebarExpanded(false)}
+          aria-hidden="true"
+        />
+      )}
+
       <main className={mainClassName}>
         <Routes>
           <Route path="/dashboard" element={<Dashboard />} />

@@ -15,10 +15,8 @@ import {
   RotateCcw,
   FileBarChart,
   Radar,
-  Menu,
   ChevronLeft,
   ChevronRight,
-  X,
 } from 'lucide-react';
 import { ASSETS } from '@/lib/constants';
 import { useStore } from '@/lib/useStore';
@@ -62,34 +60,17 @@ const navItems = [
 ];
 
 type SidebarProps = {
-  collapsed?: boolean;
-  hidden?: boolean;
-  onToggleCollapse?: () => void;
-  onToggleHidden?: () => void;
+  /** Unique condition d'affichage : étendue ou réduite au rail d'icônes. */
+  expanded?: boolean;
+  onToggleExpand?: () => void;
 };
 
-export default function Sidebar({
-  collapsed = false,
-  hidden = false,
-  onToggleCollapse,
-  onToggleHidden,
-}: SidebarProps) {
+export default function Sidebar({ expanded = true, onToggleExpand }: SidebarProps) {
   const location = useLocation();
   const { resetStore, state } = useStore();
   const unreadCount = (state.notifications || []).filter((n: any) => n.status === 'unread').length;
 
-  if (hidden) {
-    return (
-      <button
-        onClick={onToggleHidden}
-        className="fixed left-4 top-4 z-50 flex items-center gap-2 rounded-xl border border-copper/25 bg-deep/95 px-3 py-2 text-xs font-bold text-copper-light shadow-premium backdrop-blur hover:bg-carbon transition"
-        title="Afficher la sidebar"
-      >
-        <Menu size={15} />
-        Menu
-      </button>
-    );
-  }
+  const collapsed = !expanded;
 
   return (
     <aside
@@ -108,22 +89,14 @@ export default function Sidebar({
             )}
           </div>
 
-          <div className={`flex items-center ${collapsed ? 'flex-col gap-1' : 'gap-1'}`}>
-            <button
-              onClick={onToggleCollapse}
-              className="p-1.5 rounded-lg border border-exec/10 bg-carbon/50 text-subtle hover:text-copper-light hover:border-copper/25 transition"
-              title={collapsed ? 'Étendre la sidebar' : 'Réduire la sidebar'}
-            >
-              {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-            </button>
-            <button
-              onClick={onToggleHidden}
-              className="p-1.5 rounded-lg border border-exec/10 bg-carbon/50 text-subtle hover:text-red-300 hover:border-red-500/20 transition"
-              title="Masquer la sidebar"
-            >
-              <X size={14} />
-            </button>
-          </div>
+          <button
+            onClick={onToggleExpand}
+            className="p-2 rounded-lg border border-exec/10 bg-carbon/50 text-subtle hover:text-copper-light hover:border-copper/25 transition shrink-0"
+            title={collapsed ? 'Étendre la sidebar' : 'Réduire la sidebar'}
+            aria-expanded={expanded}
+          >
+            {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+          </button>
         </div>
       </div>
 
