@@ -333,7 +333,7 @@ export default function Dashboard() {
                                 : 'bg-subtle/40'
                           }`}
                         />
-                        <span className="text-xs font-semibold text-ivory shrink-0">
+                        <span className="text-xs font-semibold text-ivory shrink-0 max-w-[42%] truncate">
                           {String(run?.agent_name || 'Agent')}
                         </span>
                         <span className="text-xs text-muted flex-1 min-w-0 truncate">

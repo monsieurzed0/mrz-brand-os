@@ -142,16 +142,22 @@ export function buildRevenueSeries(
 
   let hasDatedInvoice = false;
   let hasEarlierActivity = false;
+  let firstRecordKey: string | null = null;
 
   for (const invoice of list) {
-    const paid = Number(invoice?.amount_paid || 0);
-    if (paid <= 0) continue;
-
     const date = toDate(invoice?.paid_date) || toDate(invoice?.issue_date);
     if (!date) continue;
+
+    // Le premier enregistrement borne l'historique : avant lui, le système
+    // n'a rien vu. Un zéro antérieur serait une absence de donnée déguisée
+    // en donnée.
+    const key = monthKey(date);
+    if (firstRecordKey === null || key < firstRecordKey) firstRecordKey = key;
+
+    const paid = Number(invoice?.amount_paid || 0);
+    if (paid <= 0) continue;
     hasDatedInvoice = true;
 
-    const key = monthKey(date);
     if (buckets.has(key)) {
       buckets.set(key, (buckets.get(key) || 0) + paid);
     } else if (date < new Date(now.getFullYear(), now.getMonth() - (months - 1), 1)) {
@@ -159,9 +165,11 @@ export function buildRevenueSeries(
     }
   }
 
-  if (!hasDatedInvoice) return { points: [], trend: null };
+  if (!hasDatedInvoice || firstRecordKey === null) return { points: [], trend: null };
 
-  const points = keys.map((key) => buckets.get(key) || 0);
+  // On ne garde que les mois réellement couverts par l'historique.
+  const covered = keys.filter((key) => key >= (firstRecordKey as string));
+  const points = covered.map((key) => buckets.get(key) || 0);
 
   return { points, trend: computeTrend(points, hasEarlierActivity) };
 }
